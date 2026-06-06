@@ -1,0 +1,6 @@
+{
+  "name": "UACP v5 Control Plane",
+  "description": "A high-performance, cinematic NOC and command center for the Universal Agent Control Plane (UACP) v5, featuring active swarm topology maps, vertical glowing PGL proof spines, and real-time council governance metrics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
