@@ -480,27 +480,6 @@ export default function SwarmMap({ agents, onAgentUpdate }: SwarmMapProps) {
             })}
           </g>
         </svg>
-
-        {/* Dynamic Telemetry HUD Floating Legends */}
-        <div className="absolute top-4 left-4 p-4 rounded-none bg-[#030303]/90 border border-white/10 text-mono text-[10px] leading-relaxed max-w-sm pointer-events-none shadow-[0_0_15px_rgba(0,0,0,0.85)]">
-          <div className="text-white/40 uppercase tracking-widest font-bold mb-1.5 flex items-center gap-1.5 text-xs">
-            <Shield className="w-3.5 h-3.5 text-electric-cyan" /> SWARM TOPOLOGY RADAR
-          </div>
-          <div className="space-y-1 text-white/70">
-            <p>• Connected Units: <span className="text-white font-mono font-bold">{agents.length} Nodes</span></p>
-            <p>• Rendering Grid: <span className="text-white font-mono">Concentric Department Orbitals</span></p>
-            <p>• Synchronicity Flow: <span className="text-matrix-emerald">Consensus Active v5.2</span></p>
-          </div>
-          <hr className="my-2 border-white/[0.08]" />
-          <div className="flex gap-3 text-[9px]">
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-electric-cyan animate-pulse" /> Active Swarm Pulse</span>
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-white/40" /> Consensus Idle</span>
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-laser-red" /> State Blocked</span>
-          </div>
-          <div className="mt-2.5 text-[8.5px] italic text-white/30">
-            *Drag background to pan space. Scroll wheel or double-tap trackpad to zoom.
-          </div>
-        </div>
       </div>
 
       {/* 3. Frosted-Glass Slidable Right-Side-Panel Drawer */}

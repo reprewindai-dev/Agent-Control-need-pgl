@@ -145,6 +145,7 @@ export default function App() {
           setActiveTab={setActiveTab}
           mcpHeartbeat={liveMetrics.mcpIOHeartbeat}
           throughput={liveMetrics.throughput}
+          agentsCount={agents.length}
         />
 
         {/* 3. Central Application Viewport */}

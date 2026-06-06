@@ -12,9 +12,10 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
   mcpHeartbeat: string;
   throughput: number;
+  agentsCount: number;
 }
 
-export default function Sidebar({ activeTab, setActiveTab, mcpHeartbeat, throughput }: SidebarProps) {
+export default function Sidebar({ activeTab, setActiveTab, mcpHeartbeat, throughput, agentsCount }: SidebarProps) {
   const menuItems = [
     { id: 'overview', name: 'Swarm Map', icon: Server, desc: '105 Node Swarm Active' },
     { id: 'spine', name: 'Run Spine', icon: GitCommit, desc: 'PGL consensus trails' },
@@ -86,6 +87,48 @@ export default function Sidebar({ activeTab, setActiveTab, mcpHeartbeat, through
             );
           })}
         </nav>
+
+        {/* Swarm Topology Radar Widget - Relocated to utilize vacant sidebar space */}
+        <div className="mx-4 my-2 p-3.5 bg-white/[0.01] border border-white/5 rounded-none font-mono">
+          <div className="text-white/40 uppercase tracking-widest font-bold text-[9px] mb-2 flex items-center gap-1.5">
+            <Radio className="w-3.5 h-3.5 text-electric-cyan animate-pulse" />
+            <span>SWARM TOPOLOGY RADAR</span>
+          </div>
+          <div className="space-y-1.5 text-[10px] text-white/70">
+            <div className="flex justify-between">
+              <span className="text-white/45">Connected Units:</span>
+              <strong className="text-white font-mono">{agentsCount} Nodes</strong>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/45">Rendering Grid:</span>
+              <span className="text-white">Concentric Orbit</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/45">Synchronicity:</span>
+              <span className="text-[#00FF66]">Consensus v5.2</span>
+            </div>
+          </div>
+          <hr className="my-2.5 border-white/[0.08]" />
+          <div className="flex justify-between text-[8px] text-white/55">
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-electric-cyan inline-block shrink-0 rounded-none animate-pulse" />
+              Active
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-white/40 inline-block shrink-0 rounded-none" />
+              Idle
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-red-500 inline-block shrink-0 rounded-none" />
+              Blocked
+            </span>
+          </div>
+          {activeTab === 'overview' && (
+            <div className="mt-2.5 text-[8px] text-white/30 italic leading-snug">
+              *Drag map to pan. Zoom/pinch to recalibrate layout.
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Footer Metrics */}
