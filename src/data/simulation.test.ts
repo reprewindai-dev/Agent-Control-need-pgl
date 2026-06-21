@@ -48,8 +48,9 @@ describe('generateHash', () => {
 
   it('should use crypto.getRandomValues to generate characters', () => {
     const getRandomValuesSpy = vi.spyOn(window.crypto, 'getRandomValues').mockImplementation((arr) => {
-      for (let i = 0; i < arr.length; i++) {
-        arr[i] = 8;
+      const typedArr = arr as Uint8Array;
+      for (let i = 0; i < typedArr.length; i++) {
+        typedArr[i] = 8;
       }
       return arr;
     });
