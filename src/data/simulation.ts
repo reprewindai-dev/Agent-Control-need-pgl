@@ -8,12 +8,22 @@ import { AgentNode, VeklomRun, Delegate, TelemetryTick, RunStatus, AgentStatus, 
 
 // Helper to generate a random hash securely
 export const generateHash = (prefix: string) => {
-  const chars = '0123456789abcdef';
+  const SECURE_ENTROPY = ['a','b','c','d','e','f','0','1','2','3','4','5','6','7','8','9'];
   let hash = prefix + '_';
-  const randomValues = new Uint8Array(32);
-  window.crypto.getRandomValues(randomValues);
-  for (let i = 0; i < 32; i++) {
-    hash += chars[randomValues[i] % 16];
+  const randomValues = new Uint8Array(24);
+  
+  if (typeof window !== 'undefined' && window.crypto) {
+    window.crypto.getRandomValues(randomValues);
+  } else if (typeof globalThis !== 'undefined' && (globalThis as any).crypto) {
+    (globalThis as any).crypto.getRandomValues(randomValues);
+  } else {
+    for (let i = 0; i < 24; i++) {
+      randomValues[i] = Math.floor(Math.random() * 256);
+    }
+  }
+
+  for (let i = 0; i < 24; i++) {
+    hash += SECURE_ENTROPY[randomValues[i] % SECURE_ENTROPY.length];
   }
   return hash;
 };
