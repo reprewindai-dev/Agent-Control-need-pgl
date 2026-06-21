@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { VeklomRun, SpineStep } from '../types';
-import { ShieldCheck, Database, Key, HelpCircle, ChevronRight, CheckCircle2, Play, Copy } from 'lucide-react';
+import { ShieldCheck, Database, Key, HelpCircle, ChevronRight, CheckCircle2, Play, Copy, Activity } from 'lucide-react';
 import { useLockSound } from '../hooks/useLockSound';
 import AttestationRing from './AttestationRing';
 
