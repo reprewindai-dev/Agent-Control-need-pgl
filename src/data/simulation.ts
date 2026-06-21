@@ -6,12 +6,14 @@
 import { establishBackendHandshake, triggerCAPIExecution } from './pglLoader';
 import { AgentNode, VeklomRun, Delegate, TelemetryTick, RunStatus, AgentStatus, SpineStep } from '../types';
 
-// Helper to generate a random hash
+// Helper to generate a random hash securely
 export const generateHash = (prefix: string) => {
   const chars = '0123456789abcdef';
   let hash = prefix + '_';
+  const randomValues = new Uint8Array(32);
+  window.crypto.getRandomValues(randomValues);
   for (let i = 0; i < 32; i++) {
-    hash += chars[Math.floor(Math.random() * 16)];
+    hash += chars[randomValues[i] % 16];
   }
   return hash;
 };
