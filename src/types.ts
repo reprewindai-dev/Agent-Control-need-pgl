@@ -25,7 +25,7 @@ export interface AgentNode {
 }
 
 export type RunStatus = 'completed' | 'running' | 'failed' | 'queued';
-export type SpineStep = 'Intent' | 'Plan' | 'ArbiterOS' | 'Redis Lua' | 'Attestation';
+export type SpineStep = 'Intent' | 'Plan' | 'cAPI Gateway' | 'ArbiterOS' | 'Redis Lua' | 'Attestation';
 
 export interface VeklomRun {
   id: string;
