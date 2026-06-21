@@ -244,7 +244,7 @@ const generateVeklomRuns = (agents: AgentNode[]): VeklomRun[] => {
 };
 
 // Global Central Store holding state and allowing reactive subscription
-class ControlPlaneSimulationStore {
+export class ControlPlaneSimulationStore {
   public agents: AgentNode[] = [];
   public runs: VeklomRun[] = [];
   public delegates: Delegate[] = initialDelegates;

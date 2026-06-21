@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { generateHash } from './simulation';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { generateHash, ControlPlaneSimulationStore } from './simulation';
 
 describe('generateHash', () => {
   afterEach(() => {
@@ -61,5 +61,68 @@ describe('generateHash', () => {
     expect(hash.substring(4)).toHaveLength(24);
     const generatedPart = hash.substring(4);
     expect(generatedPart.split('').every(c => c === '2')).toBe(true);
+  });
+});
+
+describe('ControlPlaneSimulationStore', () => {
+  let store: ControlPlaneSimulationStore;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    store = new ControlPlaneSimulationStore();
+  });
+
+  afterEach(() => {
+    store.stopSimulation();
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+
+  it('subscribes and calls listeners when notify is triggered (e.g. via triggerManualRun)', () => {
+    const listener = vi.fn();
+    const unsubscribe = store.subscribe(listener);
+    expect(listener).not.toHaveBeenCalled();
+
+    store.triggerManualRun('Test intent');
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
+    store.triggerManualRun('Another intent');
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts and stops the simulation tick interval properly', () => {
+    const listener = vi.fn();
+    store.subscribe(listener);
+    expect(listener).not.toHaveBeenCalled();
+
+    store.stopSimulation();
+    vi.advanceTimersByTime(2000);
+    expect(listener).not.toHaveBeenCalled();
+
+    store.startSimulation();
+    vi.advanceTimersByTime(1800);
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(1800);
+    expect(listener).toHaveBeenCalledTimes(2);
+
+    store.stopSimulation();
+    vi.advanceTimersByTime(2000);
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
+
+  it('prevents starting multiple intervals if startSimulation is called consecutively', () => {
+    const listener = vi.fn();
+    store.subscribe(listener);
+
+    store.stopSimulation();
+    expect(listener).not.toHaveBeenCalled();
+
+    store.startSimulation();
+    store.startSimulation();
+
+    vi.advanceTimersByTime(1800);
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });
