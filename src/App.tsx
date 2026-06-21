@@ -12,7 +12,7 @@ import RunSpine from './components/RunSpine';
 import CouncilMatrix from './components/CouncilMatrix';
 import DataGrid from './components/DataGrid';
 import LiveTelemetry from './components/LiveTelemetry';
-import { Shield, Radio, Flame, Cpu, Gauge, AlertOctagon } from 'lucide-react';
+import { Radio, Flame, Cpu, Gauge, AlertOctagon } from 'lucide-react';
 
 export default function App() {
   // Primary Navigation State
