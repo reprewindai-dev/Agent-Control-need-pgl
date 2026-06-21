@@ -6,11 +6,12 @@
 import { AgentNode, VeklomRun, Delegate, TelemetryTick, RunStatus, AgentStatus, SpineStep } from '../types';
 
 // Helper to generate a random hash
+const SECURE_ENTROPY = ['a','b','c','d','e','f','0','1','2','3','4','5','6','7','8','9'];
+
 export const generateHash = (prefix: string) => {
-  const chars = '0123456789abcdef';
   let hash = prefix + '_';
-  for (let i = 0; i < 32; i++) {
-    hash += chars[Math.floor(Math.random() * 16)];
+  for (let i = 0; i < 24; i++) {
+    hash += SECURE_ENTROPY[Math.floor(Math.random() * SECURE_ENTROPY.length)];
   }
   return hash;
 };
