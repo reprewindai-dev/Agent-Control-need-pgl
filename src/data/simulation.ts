@@ -9,8 +9,10 @@ import { AgentNode, VeklomRun, Delegate, TelemetryTick, RunStatus, AgentStatus, 
 export const generateHash = (prefix: string) => {
   const chars = '0123456789abcdef';
   let hash = prefix + '_';
+  const array = new Uint8Array(32);
+  window.crypto.getRandomValues(array);
   for (let i = 0; i < 32; i++) {
-    hash += chars[Math.floor(Math.random() * 16)];
+    hash += chars[array[i] % 16];
   }
   return hash;
 };
