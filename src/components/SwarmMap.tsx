@@ -190,6 +190,16 @@ export default function SwarmMap({ agents, onAgentUpdate }: SwarmMapProps) {
     });
   }, [agents, searchQuery, selectedDept, selectedStatus]);
 
+  const deptLeaderMap = useMemo(() => {
+    const map = new Map<string, AgentNode>();
+    for (const a of agents) {
+      if (a.id.includes('LDR')) {
+        map.set(a.id, a);
+      }
+    }
+    return map;
+  }, [agents]);
+
   // Orbit routes configurations to animate light pulse particles
   const orbitEdges = useMemo(() => {
     const edges: { fromX: number; fromY: number; toX: number; toY: number; dept: string; id: string }[] = [];
@@ -386,7 +396,8 @@ export default function SwarmMap({ agents, onAgentUpdate }: SwarmMapProps) {
             {/* Department Orbit Subsystem Connections (sub-agents connected to leader) */}
             {agents.filter(a => !a.id.includes('LDR') && a.id !== 'AG-CORE-000').map((agent) => {
               // Find the leader of this cluster
-              const deptLeader = agents.find(l => l.id === `AG-${agent.department.slice(0, 3).toUpperCase()}-LDR`);
+              const leaderId = `AG-${agent.department.slice(0, 3).toUpperCase()}-LDR`;
+              const deptLeader = deptLeaderMap.get(leaderId);
               if (!deptLeader) return null;
 
               return (
