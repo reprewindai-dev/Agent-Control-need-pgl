@@ -127,6 +127,23 @@ export interface WorkspaceOverview {
     hash: string;
     ts: string;
   }>;
+  fleet: Array<{
+    id: string;
+    name: string;
+    quant: string;
+    replicas: number;
+    route: string;
+    p50: number;
+  }>;
+  routing: {
+    hetzner_percent: number;
+    aws_percent: number;
+    primary_region: string;
+    burst_region: string;
+    history: Array<{ t: string; hetzner: number; aws: number }>;
+    regions: Array<{ label: string; value: string; sub: string; route: string }>;
+  };
+  updated_at: string;
 }
 
 export const fetchWorkspaceOverview = async (): Promise<WorkspaceOverview | null> => {
