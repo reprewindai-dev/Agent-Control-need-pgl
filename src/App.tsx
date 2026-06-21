@@ -100,8 +100,8 @@ export default function App() {
   };
 
   // Handle high priority manual execution injection
-  const handleTriggerManualOverride = (intentText: string, policyText: string) => {
-    const newRun = controlStore.triggerManualRun(intentText, policyText);
+  const handleTriggerManualOverride = async (intentText: string, policyText: string) => {
+    const newRun = await controlStore.triggerManualRun(intentText, policyText);
     setSelectedRunId(newRun.id);
     setActiveTab('spine'); // Shift view to spine to show live lock progression!
   };

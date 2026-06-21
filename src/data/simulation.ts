@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { establishBackendHandshake } from './pglLoader';
+import { establishBackendHandshake, triggerCAPIExecution } from './pglLoader';
 import { AgentNode, VeklomRun, Delegate, TelemetryTick, RunStatus, AgentStatus, SpineStep } from '../types';
 
 // Helper to generate a random hash
@@ -550,20 +550,69 @@ class ControlPlaneSimulationStore {
   }
 
   // Force trigger an manual execution
-  public triggerManualRun(intentText: string, policyText: string = 'SEC-GAS-LIMIT-MAX') {
+
+  // Force trigger an manual execution
+  public async triggerManualRun(intentText: string, policyText: string = 'SEC-GAS-LIMIT-MAX') {
     const isSuccess = Math.random() < 0.85;
     const ruleObj = policyRules.find(p => p.rule === policyText) || policyRules[0];
     
+    // Default fallback values
+    let evidence_id = "EV-PENDING-NETWORK";
+    let policyStatus = isSuccess ? 'passed' : 'violated';
+    
+    // Pick an agent (the first one that is active or fallback)
+    const agent = this.agents.find(a => a.status === 'Active') || this.agents[0];
+    const pgl_id = agent ? agent.id : "NO-PGL-ID";
+    
+    this.logs.unshift({
+      timestamp: new Date().toISOString(),
+      source: 'cAPI-GATE',
+      message: `Transmitting Intent [${intentText}] to cAPI Backend for Agent ${pgl_id}...`,
+      type: 'warn'
+    });
+    this.notify();
+
+    try {
+      // FIRE ACROSS THE INTERNET TO cAPI BACKEND
+      const receipt = await triggerCAPIExecution(
+        agent ? agent.name : "TERMINAL-MANUAL",
+        pgl_id,
+        "mcp",
+        "manual_override",
+        { intent: intentText, policy: policyText }
+      );
+      
+      evidence_id = receipt.evidence_chain_id;
+      policyStatus = 'passed'; // If it returns, cAPI approved it
+      
+      this.logs.unshift({
+        timestamp: new Date().toISOString(),
+        source: 'PGL-EVIDENCE',
+        message: `cAPI Approved. Cryptographic Receipt: ${evidence_id}`,
+        type: 'info'
+      });
+      
+    } catch (e: any) {
+      console.error(e);
+      policyStatus = 'violated';
+      this.logs.unshift({
+        timestamp: new Date().toISOString(),
+        source: 'cAPI-VETO',
+        message: `PACKET DROPPED: ${e.message}`,
+        type: 'error'
+      });
+    }
+
     const newRun: VeklomRun = {
       id: `VR-${String(9482 + this.runs.length).padStart(5, '0')}`,
       intent: intentText || 'Manual multiplexer override allocation',
-      status: 'running',
+      status: policyStatus === 'passed' ? 'running' : 'failed',
       timestamp: new Date().toISOString(),
-      duration: 'Calculating...',
+      duration: policyStatus === 'passed' ? 'Calculating...' : 'DROPPED',
       currentStep: 'Intent',
       steps: [
-        { name: 'Intent', status: 'completed', hash: generateHash('int'), details: 'User intent parsed and parsed into PGL representation.' },
-        { name: 'Plan', status: 'active', hash: generateHash('pln'), details: 'Generated manual override run path.' },
+        { name: 'Intent', status: 'completed', hash: generateHash('int'), details: 'User intent parsed and converted to ExecutionIntent payload.' },
+        { name: 'cAPI Gateway', status: policyStatus === 'passed' ? 'completed' : 'failed', hash: evidence_id, details: policyStatus === 'passed' ? `Approved: ${evidence_id}` : 'VETO ENGAGED. Payload dropped.' },
         { name: 'ArbiterOS', status: 'pending', hash: generateHash('arb'), details: `Checking rule restrictions on ${ruleObj.rule}.` },
         { name: 'Redis Lua', status: 'pending', hash: generateHash('lua'), details: 'Lua storage queue placement.' },
         { name: 'Attestation', status: 'pending', hash: generateHash('att'), details: 'Final proof sealing.' }
@@ -575,18 +624,12 @@ class ControlPlaneSimulationStore {
       },
       evidenceCount: 1,
       policyRule: ruleObj.rule,
-      policyStatus: isSuccess ? 'passed' : 'violated',
+      policyStatus: policyStatus as any,
       policyDetails: ruleObj.desc,
-      hash: generateHash('vr')
+      hash: evidence_id !== "EV-PENDING-NETWORK" ? evidence_id : generateHash('vr')
     };
 
     this.runs.unshift(newRun);
-    this.logs.unshift({
-      timestamp: new Date().toISOString(),
-      source: 'MCP-IO',
-      message: `Manual high-priority control override triggered: ${newRun.id}`,
-      type: 'warn'
-    });
     this.notify();
     return newRun;
   }
