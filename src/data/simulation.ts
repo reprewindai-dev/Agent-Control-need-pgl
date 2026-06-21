@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { establishBackendHandshake } from './pglLoader';
 import { AgentNode, VeklomRun, Delegate, TelemetryTick, RunStatus, AgentStatus, SpineStep } from '../types';
 
 // Helper to generate a random hash
@@ -250,6 +251,65 @@ class ControlPlaneSimulationStore {
   };
 
   private listeners: (() => void)[] = [];
+
+  public async initializeFromHandshake() {
+    try {
+      this.logs.unshift({
+        timestamp: new Date().toISOString(),
+        source: 'PGL-SYS',
+        message: 'Establishing live cryptographic handshake with Backend...',
+        type: 'warn'
+      });
+      this.notify();
+
+      const pglAgents = await establishBackendHandshake();
+      
+      if (pglAgents && pglAgents.length > 0) {
+        // Map the real PGL agents over the mock agents
+        this.agents = pglAgents.map((agent, i) => {
+          // Spread them across the swarm map circle mathematically
+          const angle = (i * 2 * Math.PI) / pglAgents.length;
+          const radius = 220 + (i % 3) * 30; // create multiple rings
+          
+          return {
+            id: agent.pgl_id,
+            name: agent.agent.toUpperCase(),
+            role: 'Executor', // Default role
+            department: 'Engineering',
+            status: agent.status === 'cleared' ? 'Active' : 'Idle',
+            mission: `PGL Aligned Execution Context: ${agent.run_id}`,
+            toolScopes: ['kernel_read', 'pgl_attest'],
+            metrics: { cpu: Math.floor(Math.random() * 40) + 10, memory: Math.floor(Math.random() * 60) + 20, latency: 4, requestCount: 0 },
+            telemetryLogs: [
+              `PGL Signature Verified: ${agent.pgl_id}`,
+              `Connected to backend execution trace: ${agent.run_id}`
+            ],
+            x: 400 + Math.cos(angle) * radius,
+            y: 300 + Math.sin(angle) * radius
+          };
+        });
+
+        this.liveMetrics.connectedAgentsCount = this.agents.length;
+        
+        this.logs.unshift({
+          timestamp: new Date().toISOString(),
+          source: 'PGL-SYS',
+          message: `Handshake complete. ${this.agents.length} deterministically aligned agents connected.`,
+          type: 'info'
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      this.logs.unshift({
+        timestamp: new Date().toISOString(),
+        source: 'PGL-SYS',
+        message: 'Handshake failed. Falling back to local/mock swarm.',
+        type: 'error'
+      });
+    }
+    this.notify();
+  }
+
   private intervalId: NodeJS.Timeout | null = null;
 
   constructor() {
