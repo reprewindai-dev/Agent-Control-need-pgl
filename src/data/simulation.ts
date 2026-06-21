@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { establishBackendHandshake, triggerCAPIExecution } from './pglLoader';
+import { establishBackendHandshake, triggerCAPIExecution, fetchWorkspaceOverview } from './pglLoader';
 import { AgentNode, VeklomRun, Delegate, TelemetryTick, RunStatus, AgentStatus, SpineStep } from '../types';
 
 // Helper to generate a random hash securely
@@ -277,36 +277,30 @@ export class ControlPlaneSimulationStore {
       const pglAgents = await establishBackendHandshake();
       
       if (pglAgents && pglAgents.length > 0) {
-        // Map the real PGL agents over the mock agents
-        this.agents = pglAgents.map((agent, i) => {
-          // Spread them across the swarm map circle mathematically
-          const angle = (i * 2 * Math.PI) / pglAgents.length;
-          const radius = 220 + (i % 3) * 30; // create multiple rings
-          
-          return {
-            id: agent.pgl_id,
-            name: agent.agent.toUpperCase(),
-            role: 'Executor', // Default role
-            department: 'Engineering',
-            status: agent.status === 'cleared' ? 'Active' : 'Idle',
-            mission: `PGL Aligned Execution Context: ${agent.run_id}`,
-            toolScopes: ['kernel_read', 'pgl_attest'],
-            metrics: { cpu: Math.floor(Math.random() * 40) + 10, memory: Math.floor(Math.random() * 60) + 20, latency: 4, requestCount: 0 },
-            telemetryLogs: [
-              `PGL Signature Verified: ${agent.pgl_id}`,
-              `Connected to backend execution trace: ${agent.run_id}`
-            ],
-            x: 400 + Math.cos(angle) * radius,
-            y: 300 + Math.sin(angle) * radius
-          };
+        // Map the real PGL agents over the sub-agent nodes in the swarm to preserve the full map
+        const subAgents = this.agents.filter(a => a.id !== 'AG-CORE-000' && !a.id.includes('LDR'));
+        pglAgents.forEach((realAgent, idx) => {
+          if (idx < subAgents.length) {
+            const targetAgent = subAgents[idx];
+            targetAgent.id = realAgent.pgl_id;
+            targetAgent.name = realAgent.agent.toUpperCase();
+            targetAgent.status = realAgent.status === 'cleared' ? 'Active' : 'Idle';
+            targetAgent.mission = `PGL Aligned Execution Context: ${realAgent.run_id}`;
+            targetAgent.toolScopes = ['kernel_read', 'pgl_attest'];
+            targetAgent.telemetryLogs = [
+              `[HANDSHAKE] Synced with GnomLedger PGL.`,
+              `PGL Signature Verified: ${realAgent.pgl_id}`,
+              `Connected to backend execution trace: ${realAgent.run_id}`
+            ];
+          }
         });
 
-        this.liveMetrics.connectedAgentsCount = this.agents.length;
+        this.liveMetrics.connectedAgentsCount = pglAgents.length;
         
         this.logs.unshift({
           timestamp: new Date().toISOString(),
           source: 'PGL-SYS',
-          message: `Handshake complete. ${this.agents.length} deterministically aligned agents connected.`,
+          message: `Handshake complete. ${pglAgents.length} deterministically aligned agents mapped to Swarm.`,
           type: 'info'
         });
       }
@@ -402,9 +396,109 @@ export class ControlPlaneSimulationStore {
     }
   }
 
+  private lastSyncTime = 0;
+
+  public async syncWithBackend() {
+    const now = Date.now();
+    // Throttle sync to once every 6 seconds to prevent flooding
+    if (now - this.lastSyncTime < 6000) return;
+    this.lastSyncTime = now;
+
+    try {
+      const overview = await fetchWorkspaceOverview();
+      if (overview) {
+        // Sync Live Metrics from backend
+        this.liveMetrics.totalExecutions = overview.total_requests_today || this.liveMetrics.totalExecutions;
+        this.liveMetrics.throughput = overview.requests_per_min || this.liveMetrics.throughput;
+        this.liveMetrics.gasSaved = overview.spend_today_usd || this.liveMetrics.gasSaved;
+        this.liveMetrics.activeQueue = overview.active_pipelines || this.liveMetrics.activeQueue;
+        
+        // Sync Real Audit Logs to our live telemetry console ticker
+        if (overview.audit_logs && overview.audit_logs.length > 0) {
+          overview.audit_logs.forEach(log => {
+            // Check if this log is already present in our ticker to avoid duplicates
+            const isDuplicate = this.logs.some(existingLog => 
+              existingLog.message.includes(log.id) || 
+              (existingLog.message.includes(log.action) && existingLog.timestamp === log.ts)
+            );
+            if (!isDuplicate) {
+              this.logs.unshift({
+                timestamp: log.ts,
+                source: log.actor === 'system' ? 'PGL-SYS' : 'USER-CLI',
+                message: `[${log.target.toUpperCase()}] ${log.action.toUpperCase()} (${log.hash}) - Ref: ${log.id}`,
+                type: log.action.includes('denied') || log.action.includes('fail') ? 'error' : 'info'
+              });
+            }
+          });
+          // Keep logs size bounded
+          if (this.logs.length > 100) {
+            this.logs = this.logs.slice(0, 100);
+          }
+        }
+
+        // Sync Real runs into our runs state
+        if (overview.recent_runs && overview.recent_runs.length > 0) {
+          overview.recent_runs.forEach(realRun => {
+            // Check if this run is already present in our runs list
+            const existingIndex = this.runs.findIndex(r => r.id === realRun.id);
+            const runStatus: RunStatus = realRun.policy === 'violated' || realRun.policy === 'redacted' ? 'failed' : 'completed';
+            
+            const mappedRun: VeklomRun = {
+              id: realRun.id,
+              intent: `Inference via ${realRun.model} (${realRun.route})`,
+              status: runStatus,
+              timestamp: realRun.ts || new Date().toISOString(),
+              duration: `${realRun.latency}ms`,
+              currentStep: 'Attestation',
+              steps: [
+                { name: 'Intent', status: 'completed', hash: generateHash('int'), details: 'User intent parsed and parsed into PGL representation.' },
+                { name: 'Plan', status: 'completed', hash: generateHash('pln'), details: 'Plan generated for model routing.' },
+                { name: 'ArbiterOS', status: 'completed', hash: generateHash('arb'), details: `Checked model execution policies.` },
+                { name: 'Redis Lua', status: 'completed', hash: generateHash('lua'), details: 'Storage and rate-limiting limits checked.' },
+                { name: 'Attestation', status: 'completed', hash: generateHash('att'), details: `State root attested. Cost: $${realRun.cost.toFixed(5)}` }
+              ],
+              attestation: {
+                seked: 'passed',
+                arbiter: 'passed',
+                converge: 'passed'
+              },
+              evidenceCount: 1,
+              policyRule: 'SEC-GAS-LIMIT-MAX',
+              policyStatus: realRun.policy === 'violated' || realRun.policy === 'redacted' ? 'violated' : 'passed',
+              policyDetails: `Validated model route: ${realRun.model}`,
+              hash: realRun.id
+            };
+
+            if (existingIndex >= 0) {
+              // Update existing
+              this.runs[existingIndex] = {
+                ...this.runs[existingIndex],
+                status: mappedRun.status,
+                duration: mappedRun.duration,
+                policyStatus: mappedRun.policyStatus
+              };
+            } else {
+              // Insert new at the beginning
+              this.runs.unshift(mappedRun);
+            }
+          });
+          // Keep runs bounded
+          if (this.runs.length > 100) {
+            this.runs = this.runs.slice(0, 100);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[SYNC ERROR] Failed to sync with backend.', err);
+    }
+  }
+
   // Make random changes to the system core state to make it look incredibly alive!
   private tick() {
-    // 1. Randomly update Agent CPU, memory, and add tick log
+    // 1. Sync with real backend data first
+    this.syncWithBackend();
+
+    // 2. Randomly update Agent CPU, memory, and add tick log
     const activeAgents = this.agents.filter(a => a.status === 'Active');
     const idleAgents = this.agents.filter(a => a.status === 'Idle');
     

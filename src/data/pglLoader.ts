@@ -75,3 +75,77 @@ export const triggerCAPIExecution = async (
   const data = await response.json();
   return data as ExecutionReceipt;
 };
+
+export interface WorkspaceOverview {
+  workspace_id: string;
+  plan: string;
+  members_count: number;
+  models_enabled: number;
+  total_requests_today: number;
+  requests_per_min: number;
+  p50_latency_ms: number;
+  tokens_per_sec: number;
+  spend_today_usd: number;
+  spend_cap_usd: number;
+  spend_percent: number;
+  spend_status: string;
+  burn_rate_usd_per_min: number;
+  forecast_eod_usd: number;
+  budget_remaining_usd: number;
+  active_pipelines: number;
+  active_deployments: number;
+  active_models: number;
+  audit_entries: number;
+  recent_runs: Array<{
+    id: string;
+    model: string;
+    route: string;
+    latency: number;
+    tokens: number;
+    cost: number;
+    policy: string;
+    ts: string;
+  }>;
+  policy_events: Array<{
+    t: string;
+    title: string;
+    body: string;
+    tone: string;
+  }>;
+  alerts: Array<{
+    id: string;
+    title: string;
+    severity: string;
+    source: string;
+    time: string;
+  }>;
+  audit_logs: Array<{
+    id: string;
+    action: string;
+    target: string;
+    actor: string;
+    hash: string;
+    ts: string;
+  }>;
+}
+
+export const fetchWorkspaceOverview = async (): Promise<WorkspaceOverview | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/workspace/overview/live`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Overview fetch failed with status ${response.status}`);
+    }
+
+    return await response.json() as WorkspaceOverview;
+  } catch (error) {
+    console.error('[OVERVIEW ERROR] Failed to fetch workspace overview.', error);
+    return null;
+  }
+};
+
