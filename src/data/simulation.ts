@@ -407,11 +407,12 @@ export class ControlPlaneSimulationStore {
     try {
       const overview = await fetchWorkspaceOverview();
       if (overview) {
-        // Sync Live Metrics from backend
+        // Sync Live Metrics from backend — authoritative real data
         this.liveMetrics.totalExecutions = overview.total_requests_today || this.liveMetrics.totalExecutions;
-        this.liveMetrics.throughput = overview.requests_per_min || this.liveMetrics.throughput;
-        this.liveMetrics.gasSaved = overview.spend_today_usd || this.liveMetrics.gasSaved;
+        this.liveMetrics.throughput = overview.tokens_per_sec || overview.requests_per_min || this.liveMetrics.throughput;
+        this.liveMetrics.gasSaved = overview.budget_remaining_usd || this.liveMetrics.gasSaved;
         this.liveMetrics.activeQueue = overview.active_pipelines || this.liveMetrics.activeQueue;
+        this.liveMetrics.connectedAgentsCount = overview.active_models || this.liveMetrics.connectedAgentsCount;
         
         // Sync Real Audit Logs to our live telemetry console ticker
         if (overview.audit_logs && overview.audit_logs.length > 0) {
@@ -434,6 +435,40 @@ export class ControlPlaneSimulationStore {
           if (this.logs.length > 100) {
             this.logs = this.logs.slice(0, 100);
           }
+        }
+
+        // Sync Policy Events into telemetry logs for live awareness
+        if (overview.policy_events && overview.policy_events.length > 0) {
+          overview.policy_events.forEach(event => {
+            const isDuplicate = this.logs.some(existingLog =>
+              existingLog.message.includes(event.title) && existingLog.message.includes(event.body)
+            );
+            if (!isDuplicate) {
+              this.logs.unshift({
+                timestamp: event.t || new Date().toISOString(),
+                source: 'ArbiterOS',
+                message: `[POLICY] ${event.title}: ${event.body}`,
+                type: event.tone === 'warn' || event.tone === 'warning' ? 'warn' : 'info'
+              });
+            }
+          });
+        }
+
+        // Sync Security Alerts
+        if (overview.alerts && overview.alerts.length > 0) {
+          overview.alerts.forEach(alert => {
+            const isDuplicate = this.logs.some(existingLog =>
+              existingLog.message.includes(alert.id)
+            );
+            if (!isDuplicate) {
+              this.logs.unshift({
+                timestamp: new Date().toISOString(),
+                source: 'SEKED',
+                message: `[ALERT:${alert.severity.toUpperCase()}] ${alert.title} (${alert.source}) — Ref: ${alert.id}`,
+                type: alert.severity === 'critical' || alert.severity === 'high' ? 'error' : 'warn'
+              });
+            }
+          });
         }
 
         // Sync Real runs into our runs state
@@ -655,9 +690,7 @@ export class ControlPlaneSimulationStore {
     this.notify();
   }
 
-  // Force trigger an manual execution
-
-  // Force trigger an manual execution
+  // Force trigger a manual execution via cAPI
   public async triggerManualRun(intentText: string, policyText: string = 'SEC-GAS-LIMIT-MAX') {
     const isSuccess = Math.random() < 0.85;
     const ruleObj = policyRules.find(p => p.rule === policyText) || policyRules[0];
