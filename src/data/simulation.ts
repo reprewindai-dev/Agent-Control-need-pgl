@@ -256,6 +256,32 @@ class ControlPlaneSimulationStore {
     this.agents = generateSwarmAgents();
     this.runs = generateVeklomRuns(this.agents);
     this.seedLogs();
+    // Listen for custom CLI commands from the frontend terminal
+    if (typeof window !== 'undefined') {
+      window.addEventListener('cli-command', ((e: CustomEvent) => {
+        const { command, response } = e.detail;
+
+        this.logs.unshift({
+          timestamp: new Date().toISOString(),
+          source: 'USER-CLI',
+          message: `> ${command}`,
+          type: 'success'
+        });
+
+        if (response) {
+          setTimeout(() => {
+            this.logs.unshift({
+              timestamp: new Date().toISOString(),
+              source: 'SYS-RESP',
+              message: response,
+              type: 'info'
+            });
+            this.notify();
+          }, 300);
+        }
+        this.notify();
+      }) as EventListener);
+    }
   }
 
   private seedLogs() {
