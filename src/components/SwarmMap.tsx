@@ -5,8 +5,8 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AgentNode, AgentStatus } from '../types';
-import { Search, ZoomIn, ZoomOut, RotateCcw, X, Shield, Cpu, Activity, Database, Flame, RefreshCcw, Copy, Terminal, Info } from 'lucide-react';
+import { AgentNode } from '../types';
+import { Search, ZoomIn, ZoomOut, RotateCcw, X, Cpu, Activity, Database, Flame, RefreshCcw, Terminal } from 'lucide-react';
 
 function highlightJson(json: string): string {
   if (!json) return '';
