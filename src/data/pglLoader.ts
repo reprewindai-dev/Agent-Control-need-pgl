@@ -6,7 +6,7 @@ export interface PGLAgent {
 }
 
 // Fallback registry for safety/dev if network fails
-import fallbackRegistry from './veklom-agents/pgl_registry.json';
+import fallbackRegistry from './veklom-agents/master-agent-army/pgl_registry.json';
 
 // Toggles between live API vs Local Dev Backend based on VITE_ env vars
 // If you want to force local, set VITE_USE_LOCAL_BACKEND=true in .env
@@ -17,6 +17,10 @@ export let API_BASE_URL = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true'
 export const setCapiBaseUrl = (url: string) => {
   API_BASE_URL = url;
 };
+
+const CAPPO_BASE_URL = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true'
+  ? 'http://localhost:8001'
+  : 'https://api.cappo.veklom.com';
 
 export const establishBackendHandshake = async (): Promise<PGLAgent[]> => {
   try {
@@ -161,20 +165,64 @@ export interface WorkspaceOverview {
 
 export const fetchWorkspaceOverview = async (): Promise<WorkspaceOverview | null> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/workspace/overview/live`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
+    const [veklomRes, cappoRes] = await Promise.allSettled([
+      fetch(`${API_BASE_URL}/api/v1/workspace/overview/live`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      }),
+      fetch(`${CAPPO_BASE_URL}/api/v1/workspace/overview/live`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      })
+    ]);
 
-    if (!response.ok) {
-      throw new Error(`Overview fetch failed with status ${response.status}`);
+    let veklomData: WorkspaceOverview | null = null;
+    let cappoData: WorkspaceOverview | null = null;
+
+    if (veklomRes.status === 'fulfilled' && veklomRes.value.ok) {
+      veklomData = await veklomRes.value.json() as WorkspaceOverview;
+    }
+    if (cappoRes.status === 'fulfilled' && cappoRes.value.ok) {
+      cappoData = await cappoRes.value.json() as WorkspaceOverview;
+      // Preemptively map cappo strings for distinct UI logs
+      if (cappoData.recent_runs) {
+        cappoData.recent_runs = cappoData.recent_runs.map(r => ({ ...r, route: 'CAPPO/' + r.route }));
+      }
+      if (cappoData.audit_logs) {
+        cappoData.audit_logs = cappoData.audit_logs.map(l => ({ ...l, target: 'CAPPO/' + l.target }));
+      }
     }
 
-    return await response.json() as WorkspaceOverview;
+    if (!veklomData && !cappoData) {
+      throw new Error('Both backends failed to return overview data.');
+    }
+
+    if (veklomData && cappoData) {
+      // Merge data from both backends to give a unified view
+      // We'll prioritize Veklom as the base and add Cappo data into it.
+      const mergedData = { ...veklomData };
+      mergedData.total_requests_today = (veklomData.total_requests_today || 0) + (cappoData.total_requests_today || 0);
+      mergedData.tokens_per_sec = (veklomData.tokens_per_sec || 0) + (cappoData.tokens_per_sec || 0);
+      mergedData.active_models = (veklomData.active_models || 0) + (cappoData.active_models || 0);
+      mergedData.active_pipelines = (veklomData.active_pipelines || 0) + (cappoData.active_pipelines || 0);
+
+      // Merge arrays
+      mergedData.recent_runs = [...(veklomData.recent_runs || []), ...(cappoData.recent_runs || [])];
+      mergedData.audit_logs = [...(veklomData.audit_logs || []), ...(cappoData.audit_logs || [])];
+      mergedData.policy_events = [...(veklomData.policy_events || []), ...(cappoData.policy_events || [])];
+      mergedData.alerts = [...(veklomData.alerts || []), ...(cappoData.alerts || [])];
+
+      // Sort arrays by timestamp descending
+      mergedData.recent_runs.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
+      mergedData.audit_logs.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
+
+      return mergedData;
+    }
+
+    return veklomData || cappoData;
+
   } catch (error) {
-    console.error('[OVERVIEW ERROR] Failed to fetch workspace overview.', error);
+    console.error('[OVERVIEW ERROR] Failed to fetch workspace overview from backends.', error);
     return null;
   }
 };
