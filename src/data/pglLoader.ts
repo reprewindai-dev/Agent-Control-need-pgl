@@ -47,6 +47,10 @@ export interface ExecutionReceipt {
   result?: any;
 }
 
+import { modal, config } from '../config/wagmi';
+import { getAccount, sendTransaction } from '@wagmi/core';
+import { parseEther } from 'viem';
+
 export const triggerCAPIExecution = async (
   agent_id: string,
   pgl_id: string,
@@ -62,23 +66,65 @@ export const triggerCAPIExecution = async (
     payload
   };
 
-  // Import generateHash directly or require it
-  // We'll generate a unique Trace-Id
   const { generateHash } = await import('./simulation');
   const traceId = generateHash('trx');
 
-  const response = await fetch(`${API_BASE_URL}/api/v1/capi/execute`, {
+  const headers: any = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-Veklom-Origin-Node': API_BASE_URL,
+    'X-Veklom-Trace-Id': traceId,
+    'X-Veklom-Timestamp': Date.now().toString(),
+    'X-Veklom-Audit-Sig': generateHash('sig')
+  };
+
+  let response = await fetch(`${API_BASE_URL}/api/v1/capi/execute`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'X-Veklom-Origin-Node': API_BASE_URL,
-      'X-Veklom-Trace-Id': traceId,
-      'X-Veklom-Timestamp': Date.now().toString(),
-      'X-Veklom-Audit-Sig': generateHash('sig')
-    },
+    headers,
     body: JSON.stringify(intent)
   });
+
+  // x402 Interceptor Logic
+  if (response.status === 402) {
+    const prHeader = response.headers.get('payment-required');
+    if (prHeader) {
+      try {
+        const decoded = JSON.parse(atob(prHeader));
+        console.log('[x402] Payment Required:', decoded);
+        
+        const account = getAccount(config);
+        if (!account.isConnected) {
+          await modal.open();
+          // Poll until wallet is connected
+          await new Promise<void>((resolve) => {
+            const interval = setInterval(() => {
+              if (getAccount(config).isConnected) {
+                clearInterval(interval);
+                resolve();
+              }
+            }, 1000);
+          });
+        }
+        
+        // At this point, the user is connected via Reown AppKit!
+        const connectedAccount = getAccount(config);
+        headers['X-Wallet-Address'] = connectedAccount.address;
+        
+        // For standard x402, we would send the on-chain tx here and attach the receipt.
+        // For demo purposes and immediate verification of the real modal:
+        alert(`Wallet Connected: ${connectedAccount.address}\n\nx402 Challenge Received:\nPrice: ${decoded.accepts[0]?.price}\nPay To: ${decoded.accepts[0]?.payTo}`);
+        
+        // Re-attempt request with authenticated wallet header
+        response = await fetch(`${API_BASE_URL}/api/v1/capi/execute`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(intent)
+        });
+      } catch (err) {
+        console.error('[x402] Failed to process payment challenge:', err);
+      }
+    }
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));

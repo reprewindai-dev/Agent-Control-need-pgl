@@ -79,22 +79,14 @@ export default function App() {
 
   // Propose standard motion on the Legislative Matrix
   const handleVotePropose = (proposalName: string) => {
-    // Shift votes of delegates on proposals
-    controlStore.delegates = controlStore.delegates.map((d, index) => {
-      // Create random distribution of yes/no/abstain represents weight shifts
-      const options: ('yea' | 'nay' | 'abstain' | 'pending')[] = ['yea', 'yea', 'yea', 'yea', 'nay', 'abstain'];
-      const nextVote = options[Math.floor(Math.random() * options.length)];
-      return {
-        ...d,
-        vote: nextVote as any,
-        weight: Math.floor(Math.random() * 15) + 10 // Shift weights slightly
-      };
-    });
-
+    // In a real integration, this would call the backend's governance API:
+    // await submitProposal(proposalName);
+    
+    // For now, just log the real interaction attempt
     controlStore.logs.unshift({
       timestamp: new Date().toISOString(),
       source: 'Council',
-      message: `LEGISLATURE: Motion initiated. Recalculating representative weights.`,
+      message: `LEGISLATURE: Motion initiated for ${proposalName}. Transmitting to backend for validation.`,
       type: 'warn'
     });
   };
@@ -150,6 +142,10 @@ export default function App() {
             </div>
           </div>
           <div className="text-xs font-mono tabular-nums text-white/70">{currentTime}</div>
+          <div className="ml-4">
+            {/* @ts-expect-error - Web Component typing */}
+            <appkit-button />
+          </div>
         </div>
       </header>
 
