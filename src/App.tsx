@@ -4,7 +4,6 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { controlStore } from './data/simulation';
 import { AgentNode, VeklomRun, Delegate, TelemetryTick } from './types';
 import Sidebar from './components/Sidebar';
 import SwarmMap from './components/SwarmMap';
@@ -37,65 +36,42 @@ export default function App() {
   const [runs, setRuns] = useState<VeklomRun[]>([]);
   const [delegates, setDelegates] = useState<Delegate[]>([]);
   const [logs, setLogs] = useState<TelemetryTick[]>([]);
-  const [liveMetrics, setLiveMetrics] = useState(controlStore.liveMetrics);
+  const [liveMetrics, setLiveMetrics] = useState({
+    mcpIOHeartbeat: 'online',
+    throughput: 0,
+  });
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
 
-  // Sync to simulation ticks
+  // Future integration point:
   useEffect(() => {
-    // Initial load
-    setAgents([...controlStore.agents]);
-    setRuns([...controlStore.runs]);
-    setDelegates([...controlStore.delegates]);
-    setLogs([...controlStore.logs]);
-    setLiveMetrics({ ...controlStore.liveMetrics });
-
-    // Trigger the live PGL handshake immediately on boot!
-    controlStore.initializeFromHandshake();
-
-    // Subscribe to periodic simulation dispatch intervals (WebSockets mock)
-    const unsubscribe = controlStore.subscribe(() => {
-      setAgents([...controlStore.agents]);
-      setRuns([...controlStore.runs]);
-      setDelegates([...controlStore.delegates]);
-      setLogs([...controlStore.logs]);
-      setLiveMetrics({ ...controlStore.liveMetrics });
-    });
-
-    return () => {
-      unsubscribe();
-    };
+    // In a non-simulated system, we fetch data here.
+    // fetchInitialState().then(...)
   }, []);
 
   // Update a single agent properties (Reboot / Diagnostics actions)
   const handleAgentUpdate = (id: string, updatedFields: Partial<AgentNode>) => {
-    controlStore.agents = controlStore.agents.map(a => {
-      if (a.id === id) {
-        return { ...a, ...updatedFields };
-      }
-      return a;
-    });
-    setAgents([...controlStore.agents]);
+    setAgents(prev => prev.map(a => a.id === id ? { ...a, ...updatedFields } : a));
   };
 
   // Propose standard motion on the Legislative Matrix
   const handleVotePropose = (proposalName: string) => {
-    // In a real integration, this would call the backend's governance API:
-    // await submitProposal(proposalName);
-    
-    // For now, just log the real interaction attempt
-    controlStore.logs.unshift({
+    setLogs(prev => [{
       timestamp: new Date().toISOString(),
       source: 'Council',
       message: `LEGISLATURE: Motion initiated for ${proposalName}. Transmitting to backend for validation.`,
       type: 'warn'
-    });
+    }, ...prev]);
   };
 
   // Handle high priority manual execution injection
   const handleTriggerManualOverride = async (intentText: string, policyText: string) => {
-    const newRun = await controlStore.triggerManualRun(intentText, policyText);
-    setSelectedRunId(newRun.id);
-    setActiveTab('spine'); // Shift view to spine to show live lock progression!
+    // Empty state fallback - just log it for now
+    setLogs(prev => [{
+      timestamp: new Date().toISOString(),
+      source: 'Operator',
+      message: `MANUAL OVERRIDE: ${intentText}`,
+      type: 'warn'
+    }, ...prev]);
   };
 
   return (

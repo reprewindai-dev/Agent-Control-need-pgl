@@ -66,7 +66,9 @@ export const triggerCAPIExecution = async (
     payload
   };
 
-  const { generateHash } = await import('./simulation');
+  const generateHash = (prefix: string) => {
+    return `${prefix}_${Math.random().toString(36).substring(2, 10)}`;
+  };
   const traceId = generateHash('trx');
 
   const headers: any = {
