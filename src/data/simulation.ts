@@ -478,9 +478,10 @@ export class ControlPlaneSimulationStore {
             const existingIndex = this.runs.findIndex(r => r.id === realRun.id);
             const runStatus: RunStatus = realRun.policy === 'violated' || realRun.policy === 'redacted' ? 'failed' : 'completed';
             
+            const isCappo = realRun.route?.startsWith('CAPPO/');
             const mappedRun: VeklomRun = {
               id: realRun.id,
-              intent: `Inference via ${realRun.model} (${realRun.route})`,
+              intent: `${isCappo ? '[CAPPO] ' : ''}Inference via ${realRun.model} (${realRun.route})`,
               status: runStatus,
               timestamp: realRun.ts || new Date().toISOString(),
               duration: `${realRun.latency}ms`,
