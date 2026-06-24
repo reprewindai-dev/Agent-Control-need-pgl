@@ -120,8 +120,21 @@ export default function App() {
             <span className="text-xs font-bold tracking-[0.2em] uppercase">UACP v5 Control Plane</span>
           </div>
           <div className="h-4 w-px bg-white/20"></div>
-          <div className="flex gap-4 font-mono text-[10px] text-white/50">
-            <span>NODE_ID: US-EAST-B82</span>
+          <div className="flex items-center gap-4 font-mono text-[10px] text-white/50 bg-black/50 px-2 py-1 rounded border border-white/10">
+            <span className="text-white/30">CAPI_NODE:</span>
+            <select 
+              className="bg-transparent text-white/80 outline-none cursor-pointer hover:text-white transition-colors"
+              onChange={(e) => {
+                import('./data/pglLoader').then(m => m.setCapiBaseUrl(e.target.value));
+              }}
+              defaultValue="https://api.veklom.com"
+            >
+              <option value="https://api.veklom.com" className="bg-black text-white">Backend Core 1 (api.veklom.com)</option>
+              <option value="https://cappo.veklom.com" className="bg-black text-white">Backend Core 2 (cappo-backend)</option>
+              <option value="https://veklom-id-59uw.vercel.app" className="bg-black text-white">Edge Instance 1 (veklom-id)</option>
+              <option value="https://mcpapi.vercel.app" className="bg-black text-white">Edge Instance 2 (mcpapi)</option>
+            </select>
+            <div className="w-px h-3 bg-white/20"></div>
             <span>LATENCY: 4MS</span>
             <span className="text-[#00FF66]">OS_HEALTH: 100%</span>
           </div>

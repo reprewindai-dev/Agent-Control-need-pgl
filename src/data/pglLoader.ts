@@ -10,13 +10,16 @@ import fallbackRegistry from './veklom-agents/master-agent-army/pgl_registry.jso
 
 // Toggles between live API vs Local Dev Backend based on VITE_ env vars
 // If you want to force local, set VITE_USE_LOCAL_BACKEND=true in .env
-const API_BASE_URL = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true' 
+export let API_BASE_URL = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true' 
   ? 'http://localhost:8000' 
   : 'https://api.veklom.com';
 
 const CAPPO_BASE_URL = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true'
   ? 'http://localhost:8001'
   : 'https://api.cappo.veklom.com';
+export const setCapiBaseUrl = (url: string) => {
+  API_BASE_URL = url;
+};
 
 export const establishBackendHandshake = async (): Promise<PGLAgent[]> => {
   try {
@@ -62,11 +65,20 @@ export const triggerCAPIExecution = async (
     payload
   };
 
+  // Import generateHash directly or require it
+  // We'll generate a unique Trace-Id
+  const { generateHash } = await import('./simulation');
+  const traceId = generateHash('trx');
+
   const response = await fetch(`${API_BASE_URL}/api/v1/capi/execute`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'X-Veklom-Origin-Node': API_BASE_URL,
+      'X-Veklom-Trace-Id': traceId,
+      'X-Veklom-Timestamp': Date.now().toString(),
+      'X-Veklom-Audit-Sig': generateHash('sig')
     },
     body: JSON.stringify(intent)
   });
