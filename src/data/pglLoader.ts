@@ -21,6 +21,10 @@ export const setCapiBaseUrl = (url: string) => {
   API_BASE_URL = url;
 };
 
+const CAPPO_BASE_URL = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true'
+  ? 'http://localhost:8001'
+  : 'https://api.cappo.veklom.com';
+
 export const establishBackendHandshake = async (): Promise<PGLAgent[]> => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/pgl/registry`, {
