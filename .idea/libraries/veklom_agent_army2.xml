@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="veklom-agent-army2">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/src/data/veklom-agents/veklom-agent-army.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

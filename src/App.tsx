@@ -11,11 +11,15 @@ import RunSpine from './components/RunSpine';
 import CouncilMatrix from './components/CouncilMatrix';
 import DataGrid from './components/DataGrid';
 import LiveTelemetry from './components/LiveTelemetry';
+import QuantumTerminal from './components/QuantumTerminal';
+import GenomeLedgerOnboarding from './components/GenomeLedgerOnboarding';
+import IncidentsSlashing from './components/IncidentsSlashing';
 import { Radio, Flame, Cpu, Gauge, AlertOctagon } from 'lucide-react';
+import { controlStore } from './data/simulation';
 
 export default function App() {
   // Primary Navigation State
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [activeTab, setActiveTab] = useState<string>('terminal');
 
   // Real-time ticking UTC clock for Geometric Balance theme
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -32,20 +36,22 @@ export default function App() {
   }, []);
 
   // Local Reactive State mirroring our central control simulation store
-  const [agents, setAgents] = useState<AgentNode[]>([]);
-  const [runs, setRuns] = useState<VeklomRun[]>([]);
-  const [delegates, setDelegates] = useState<Delegate[]>([]);
-  const [logs, setLogs] = useState<TelemetryTick[]>([]);
-  const [liveMetrics, setLiveMetrics] = useState({
-    mcpIOHeartbeat: 'online',
-    throughput: 0,
-  });
+  const [agents, setAgents] = useState<AgentNode[]>(controlStore.agents);
+  const [runs, setRuns] = useState<VeklomRun[]>(controlStore.runs);
+  const [delegates, setDelegates] = useState<Delegate[]>(controlStore.delegates);
+  const [logs, setLogs] = useState<TelemetryTick[]>(controlStore.logs);
+  const [liveMetrics, setLiveMetrics] = useState(controlStore.liveMetrics);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
 
   // Future integration point:
   useEffect(() => {
-    // In a non-simulated system, we fetch data here.
-    // fetchInitialState().then(...)
+    return controlStore.subscribe(() => {
+      setAgents([...controlStore.agents]);
+      setRuns([...controlStore.runs]);
+      setDelegates([...controlStore.delegates]);
+      setLogs([...controlStore.logs]);
+      setLiveMetrics({ ...controlStore.liveMetrics });
+    });
   }, []);
 
   // Update a single agent properties (Reboot / Diagnostics actions)
@@ -148,6 +154,10 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'terminal' && (
+              <QuantumTerminal />
+            )}
+
             {activeTab === 'spine' && (
               <RunSpine 
                 runs={runs}
@@ -157,9 +167,11 @@ export default function App() {
             )}
 
             {activeTab === 'runs' && (
-              <DataGrid 
-                runs={runs}
-              />
+              <IncidentsSlashing />
+            )}
+
+            {activeTab === 'id' && (
+              <GenomeLedgerOnboarding />
             )}
 
             {activeTab === 'committee' && (
@@ -167,6 +179,18 @@ export default function App() {
                 delegates={delegates}
                 onVotePropose={handleVotePropose}
               />
+            )}
+
+            {(['playground', 'runtime', 'nexus', 'staking', 'duel', 'discovery', 'covenant', 'treasury'].includes(activeTab)) && (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-[#030303] text-white/20 font-mono gap-4">
+                <div className="w-16 h-16 rounded-full border border-dashed border-white/10 flex items-center justify-center animate-pulse">
+                  <Cpu size={32} />
+                </div>
+                <div className="text-center">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-white/40 mb-1">Module Initializing</h3>
+                  <p className="text-[10px] uppercase">Secure connection to {activeTab.toUpperCase()}_NODE pending...</p>
+                </div>
+              </div>
             )}
           </div>
 
