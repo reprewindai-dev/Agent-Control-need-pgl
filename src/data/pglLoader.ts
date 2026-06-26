@@ -14,16 +14,17 @@ export let API_BASE_URL = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true'
   ? 'http://localhost:8000' 
   : 'https://api.veklom.com';
 
-const CAPPO_BASE_URL = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true'
+let CAPPO_BASE_URL = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true'
   ? 'http://localhost:8001'
   : 'https://api.cappo.veklom.com';
+
 export const setCapiBaseUrl = (url: string) => {
   API_BASE_URL = url;
+  // If it's a localhost URL, we might need to adjust CAPPO as well if they are on adjacent ports
+  if (url.includes('localhost:8088')) {
+     CAPPO_BASE_URL = 'http://localhost:8001'; // Standard CAPPO local
+  }
 };
-
-const CAPPO_BASE_URL = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true'
-  ? 'http://localhost:8001'
-  : 'https://api.cappo.veklom.com';
 
 export const establishBackendHandshake = async (): Promise<PGLAgent[]> => {
   try {

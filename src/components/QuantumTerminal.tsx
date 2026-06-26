@@ -30,8 +30,7 @@ import { SignalIngestionFeed } from './SignalIngestionFeed';
 import { AgentLatencyVisualizer } from './AgentLatencyVisualizer';
 import { ThreatLandscape } from './ThreatLandscape';
 import QuantumDashboard from './QuantumDashboard';
-import { ToolExecutor } from './ToolExecutor';
-import { LLMProvider, ProviderConfig, QuantumAgentStatus } from '../types';
+import { API_BASE_URL } from '../data/pglLoader';
 
 type ViewType = 'terminal' | 'mesh' | 'tele' | 'paths' | 'engine' | 'hub' | 'trust' | 'dashboard' | 'tools' | 'climate' | 'security';
 type LogType = 'sys' | 'pmt' | 'out' | 'ok' | 'warn' | 'err' | 'error' | 'dim' | 'pur' | 'hdr' | 'sep' | 'custom';
@@ -284,12 +283,15 @@ export default function QuantumTerminal() {
     { match: 'reserve action', route: '/api/v1/wallet/reserve', method: 'POST' },
     { match: 'compliance', route: '/api/v1/compliance', method: 'GET' },
     { match: 'export evidence', route: '/api/v1/compliance/export', method: 'POST' },
-    { match: 'schedule evidence', route: '/api/v1/compliance/schedule-export', method: 'POST' }
+    { match: 'schedule evidence', route: '/api/v1/compliance/schedule-export', method: 'POST' },
+    { match: 'interlink health', route: '/health', method: 'GET' },
+    { match: 'interlink audit', route: '/api/audit', method: 'GET' },
+    { match: 'interlink ui', route: '/ui', method: 'GET' }
   ];
 
   const doRealCommand = async (cmdInfo: typeof cmdMap[0], rawArgs: string) => {
     pushLog(`[EXEC]    Triggering ${cmdInfo.match}...`, 'sys');
-    pushLog(`[ROUTER]  ${cmdInfo.method} ${cmdInfo.route}`, 'sys');
+    pushLog(`[ROUTER]  ${cmdInfo.method} ${API_BASE_URL}${cmdInfo.route}`, 'sys');
 
     await sleep(300);
 
@@ -301,7 +303,7 @@ export default function QuantumTerminal() {
         }
 
         const t = performance.now();
-        const res = await fetch(cmdInfo.route, opts);
+        const res = await fetch(`${API_BASE_URL}${cmdInfo.route}`, opts);
         const elapsed = performance.now() - t;
 
         if (!res.ok) {
@@ -354,7 +356,7 @@ export default function QuantumTerminal() {
          await doRealCommand(mapped, raw);
       } else {
          // USE REAL BACKEND ENGINE
-         const response = await fetch('/api/terminal/shell', {
+         const response = await fetch(`${API_BASE_URL}/api/terminal/shell`, {
            method: 'POST',
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({ command: raw })

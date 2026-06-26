@@ -14,8 +14,7 @@ import LiveTelemetry from './components/LiveTelemetry';
 import QuantumTerminal from './components/QuantumTerminal';
 import GenomeLedgerOnboarding from './components/GenomeLedgerOnboarding';
 import IncidentsSlashing from './components/IncidentsSlashing';
-import { Radio, Flame, Cpu, Gauge, AlertOctagon } from 'lucide-react';
-import { controlStore } from './data/simulation';
+import { AmphotericRuntimeControl } from './components/AmphotericRuntimeControl';
 
 export default function App() {
   // Primary Navigation State
@@ -103,10 +102,11 @@ export default function App() {
               }}
               defaultValue="https://api.veklom.com"
             >
-              <option value="https://api.veklom.com" className="bg-black text-white">Backend Core 1 (api.veklom.com)</option>
-              <option value="https://cappo.veklom.com" className="bg-black text-white">Backend Core 2 (cappo-backend)</option>
-              <option value="https://veklom-id-59uw.vercel.app" className="bg-black text-white">Edge Instance 1 (veklom-id)</option>
-              <option value="https://mcpapi.vercel.app" className="bg-black text-white">Edge Instance 2 (mcpapi)</option>
+              <option value="https://api.veklom.com" className="bg-black text-white">Veklom Cloud (api.veklom.com)</option>
+              <option value="http://localhost:8088" className="bg-black text-white">Veklom Local (8088)</option>
+              <option value="http://localhost:8080" className="bg-black text-white">Interlink Rust (8080)</option>
+              <option value="https://cappo.veklom.com" className="bg-black text-white">CAPPO Cloud (cappo-backend)</option>
+              <option value="http://localhost:8001" className="bg-black text-white">CAPPO Local (8001)</option>
             </select>
             <div className="w-px h-3 bg-white/20"></div>
             <span>LATENCY: 4MS</span>
@@ -158,12 +158,8 @@ export default function App() {
               <QuantumTerminal />
             )}
 
-            {activeTab === 'spine' && (
-              <RunSpine 
-                runs={runs}
-                selectedRunId={selectedRunId}
-                onSelectRun={setSelectedRunId}
-              />
+            {activeTab === 'runtime' && (
+              <AmphotericRuntimeControl />
             )}
 
             {activeTab === 'runs' && (
