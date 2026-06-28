@@ -5,45 +5,28 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AgentNode } from '../types';
-import { Search, ZoomIn, ZoomOut, RotateCcw, X, Cpu, Activity, Database, Flame, RefreshCcw, Terminal } from 'lucide-react';
+import { AgentNode, AgentStatus } from '../types';
+import { Search, ZoomIn, ZoomOut, RotateCcw, X, Shield, Cpu, Activity, Database, Flame, RefreshCcw, Copy, Terminal, Info } from 'lucide-react';
 
-function highlightJson(json: string): React.ReactNode[] {
-  if (!json) return [];
-  const parts: React.ReactNode[] = [];
-  const regex = /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g;
-  let lastIndex = 0;
-  let match;
-
-  while ((match = regex.exec(json)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(json.substring(lastIndex, match.index));
-    }
-
+function highlightJson(json: string): string {
+  if (!json) return '';
+  return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g, (match) => {
     let cls = 'text-white/60';
-    if (/^"/.test(match[0])) {
-      if (/:$/.test(match[0])) {
+    if (/^"/.test(match)) {
+      if (/:$/.test(match)) {
         cls = 'text-electric-cyan font-bold';
       } else {
         cls = 'text-matrix-emerald font-medium';
       }
-    } else if (/true|false/.test(match[0])) {
+    } else if (/true|false/.test(match)) {
       cls = 'text-amber-400 font-bold';
-    } else if (/null/.test(match[0])) {
+    } else if (/null/.test(match)) {
       cls = 'text-zinc-500 italic';
     } else {
       cls = 'text-hazard-amber font-semibold';
     }
-
-    parts.push(<span key={match.index} className={cls}>{match[0]}</span>);
-    lastIndex = regex.lastIndex;
-  }
-
-  if (lastIndex < json.length) {
-    parts.push(json.substring(lastIndex));
-  }
-
-  return parts;
+    return `<span class="${cls}">${match}</span>`;
+  });
 }
 
 interface SwarmMapProps {
@@ -173,8 +156,8 @@ export default function SwarmMap({ agents, onAgentUpdate }: SwarmMapProps) {
     return JSON.stringify(selectedAgent, null, 2);
   }, [selectedAgent]);
 
-  const highlightedJsonElements = useMemo(() => {
-    if (!formattedJson) return [];
+  const highlightedJsonHtml = useMemo(() => {
+    if (!formattedJson) return '';
     return highlightJson(formattedJson);
   }, [formattedJson]);
 
@@ -189,16 +172,6 @@ export default function SwarmMap({ agents, onAgentUpdate }: SwarmMapProps) {
       return matchesSearch && matchesDept && matchesStatus;
     });
   }, [agents, searchQuery, selectedDept, selectedStatus]);
-
-  const deptLeaderMap = useMemo(() => {
-    const map = new Map<string, AgentNode>();
-    for (const a of agents) {
-      if (a.id.includes('LDR')) {
-        map.set(a.id, a);
-      }
-    }
-    return map;
-  }, [agents]);
 
   // Orbit routes configurations to animate light pulse particles
   const orbitEdges = useMemo(() => {
@@ -396,8 +369,7 @@ export default function SwarmMap({ agents, onAgentUpdate }: SwarmMapProps) {
             {/* Department Orbit Subsystem Connections (sub-agents connected to leader) */}
             {agents.filter(a => !a.id.includes('LDR') && a.id !== 'AG-CORE-000').map((agent) => {
               // Find the leader of this cluster
-              const leaderId = `AG-${agent.department.slice(0, 3).toUpperCase()}-LDR`;
-              const deptLeader = deptLeaderMap.get(leaderId);
+              const deptLeader = agents.find(l => l.id === `AG-${agent.department.slice(0, 3).toUpperCase()}-LDR`);
               if (!deptLeader) return null;
 
               return (
@@ -706,9 +678,10 @@ export default function SwarmMap({ agents, onAgentUpdate }: SwarmMapProps) {
 
                     <div className="relative">
                       {/* JSON print container */}
-                      <pre className="p-3 bg-[#020202] border border-white/5 overflow-x-auto text-[10.5px] leading-relaxed select-text font-mono max-h-[70vh] break-all whitespace-pre-wrap selection:bg-white/15">
-                        {highlightedJsonElements}
-                      </pre>
+                      <pre 
+                        className="p-3 bg-[#020202] border border-white/5 overflow-x-auto text-[10.5px] leading-relaxed select-text font-mono max-h-[70vh] break-all whitespace-pre-wrap selection:bg-white/15"
+                        dangerouslySetInnerHTML={{ __html: highlightedJsonHtml }}
+                      />
                     </div>
                   </div>
                 ) : (

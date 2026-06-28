@@ -9,10 +9,6 @@
       "DOM",
       "DOM.Iterable"
     ],
-    "types": [
-      "vitest/globals",
-      "@testing-library/jest-dom"
-    ],
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "isolatedModules": true,
@@ -26,8 +22,5 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  },
-  "exclude": [
-    "src/data/veklom-agents/enforcement/agent_runner.ts"
-  ]
+  }
 }

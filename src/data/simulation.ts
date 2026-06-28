@@ -3,27 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { establishBackendHandshake, triggerCAPIExecution, fetchWorkspaceOverview } from './pglLoader';
 import { AgentNode, VeklomRun, Delegate, TelemetryTick, RunStatus, AgentStatus, SpineStep } from '../types';
 
-// Helper to generate a random hash securely
+// Helper to generate a random hash
 export const generateHash = (prefix: string) => {
-  const SECURE_ENTROPY = ['a','b','c','d','e','f','0','1','2','3','4','5','6','7','8','9'];
+  const chars = '0123456789abcdef';
   let hash = prefix + '_';
-  const randomValues = new Uint8Array(24);
-  
-  if (typeof window !== 'undefined' && window.crypto) {
-    window.crypto.getRandomValues(randomValues);
-  } else if (typeof globalThis !== 'undefined' && (globalThis as any).crypto) {
-    (globalThis as any).crypto.getRandomValues(randomValues);
-  } else {
-    for (let i = 0; i < 24; i++) {
-      randomValues[i] = Math.floor(Math.random() * 256);
-    }
-  }
-
-  for (let i = 0; i < 24; i++) {
-    hash += SECURE_ENTROPY[randomValues[i] % SECURE_ENTROPY.length];
+  for (let i = 0; i < 32; i++) {
+    hash += chars[Math.floor(Math.random() * 16)];
   }
   return hash;
 };
@@ -120,7 +107,7 @@ const generateSwarmAgents = (): AgentNode[] => {
     });
 
     // Sub-agents inside the cluster
-    const numSubAgents = 23; // 23 sub-agents + 1 leader per dept = 24 * 5 = 120 agents
+    const numSubAgents = 20; // 20 agents per cluster
     for (let i = 0; i < numSubAgents; i++) {
       const subAngle = (i * 2 * Math.PI) / numSubAgents;
       const subRadius = 55 + (i % 2 === 0 ? 15 : 0); // concentric rings
@@ -244,7 +231,7 @@ const generateVeklomRuns = (agents: AgentNode[]): VeklomRun[] => {
 };
 
 // Global Central Store holding state and allowing reactive subscription
-export class ControlPlaneSimulationStore {
+class ControlPlaneSimulationStore {
   public agents: AgentNode[] = [];
   public runs: VeklomRun[] = [];
   public delegates: Delegate[] = initialDelegates;
@@ -257,97 +244,18 @@ export class ControlPlaneSimulationStore {
     gasSaved: 1482.91, // Gwei
     activeQueue: 4, // counts
     uptime: "223d 14h 42m",
-    connectedAgentsCount: 120,
-    mcpIOHeartbeat: 'online',
+    connectedAgentsCount: 105,
+    mcpIOHeartbeat: 'NORMAL',
     totalExecutions: 82941
   };
 
   private listeners: (() => void)[] = [];
-
-  public async initializeFromHandshake() {
-    try {
-      this.logs.unshift({
-        timestamp: new Date().toISOString(),
-        source: 'PGL-SYS',
-        message: 'Establishing live cryptographic handshake with Backend...',
-        type: 'warn'
-      });
-      this.notify();
-
-      const pglAgents = await establishBackendHandshake();
-      
-      if (pglAgents && pglAgents.length > 0) {
-        // Map the real PGL agents over the sub-agent nodes in the swarm to preserve the full map
-        const subAgents = this.agents.filter(a => a.id !== 'AG-CORE-000' && !a.id.includes('LDR'));
-        pglAgents.forEach((realAgent, idx) => {
-          if (idx < subAgents.length) {
-            const targetAgent = subAgents[idx];
-            targetAgent.id = realAgent.pgl_id;
-            targetAgent.name = realAgent.agent.toUpperCase();
-            targetAgent.status = realAgent.status === 'cleared' ? 'Active' : 'Idle';
-            targetAgent.mission = `PGL Aligned Execution Context: ${realAgent.run_id}`;
-            targetAgent.toolScopes = ['kernel_read', 'pgl_attest'];
-            targetAgent.telemetryLogs = [
-              `[HANDSHAKE] Synced with GnomLedger PGL.`,
-              `PGL Signature Verified: ${realAgent.pgl_id}`,
-              `Connected to backend execution trace: ${realAgent.run_id}`
-            ];
-          }
-        });
-
-        this.liveMetrics.connectedAgentsCount = pglAgents.length;
-        
-        this.logs.unshift({
-          timestamp: new Date().toISOString(),
-          source: 'PGL-SYS',
-          message: `Handshake complete. ${pglAgents.length} deterministically aligned agents mapped to Swarm.`,
-          type: 'info'
-        });
-      }
-    } catch (e) {
-      console.error(e);
-      this.logs.unshift({
-        timestamp: new Date().toISOString(),
-        source: 'PGL-SYS',
-        message: 'Handshake failed. Falling back to local/mock swarm.',
-        type: 'error'
-      });
-    }
-    this.notify();
-  }
-
   private intervalId: NodeJS.Timeout | null = null;
 
   constructor() {
     this.agents = generateSwarmAgents();
     this.runs = generateVeklomRuns(this.agents);
     this.seedLogs();
-    // Listen for custom CLI commands from the frontend terminal
-    if (typeof window !== 'undefined') {
-      window.addEventListener('cli-command', ((e: CustomEvent) => {
-        const { command, response } = e.detail;
-
-        this.logs.unshift({
-          timestamp: new Date().toISOString(),
-          source: 'USER-CLI',
-          message: `> ${command}`,
-          type: 'success'
-        });
-
-        if (response) {
-          setTimeout(() => {
-            this.logs.unshift({
-              timestamp: new Date().toISOString(),
-              source: 'SYS-RESP',
-              message: response,
-              type: 'info'
-            });
-            this.notify();
-          }, 300);
-        }
-        this.notify();
-      }) as EventListener);
-    }
   }
 
   private seedLogs() {
@@ -396,144 +304,9 @@ export class ControlPlaneSimulationStore {
     }
   }
 
-  private lastSyncTime = 0;
-
-  public async syncWithBackend() {
-    const now = Date.now();
-    // Throttle sync to once every 6 seconds to prevent flooding
-    if (now - this.lastSyncTime < 6000) return;
-    this.lastSyncTime = now;
-
-    try {
-      const overview = await fetchWorkspaceOverview();
-      if (overview) {
-        // Sync Live Metrics from backend — authoritative real data
-        this.liveMetrics.totalExecutions = overview.total_requests_today || this.liveMetrics.totalExecutions;
-        this.liveMetrics.throughput = overview.tokens_per_sec || overview.requests_per_min || this.liveMetrics.throughput;
-        this.liveMetrics.gasSaved = overview.budget_remaining_usd || this.liveMetrics.gasSaved;
-        this.liveMetrics.activeQueue = overview.active_pipelines || this.liveMetrics.activeQueue;
-        this.liveMetrics.connectedAgentsCount = overview.active_models || this.liveMetrics.connectedAgentsCount;
-        
-        // Sync Real Audit Logs to our live telemetry console ticker
-        if (overview.audit_logs && overview.audit_logs.length > 0) {
-          overview.audit_logs.forEach(log => {
-            // Check if this log is already present in our ticker to avoid duplicates
-            const isDuplicate = this.logs.some(existingLog => 
-              existingLog.message.includes(log.id) || 
-              (existingLog.message.includes(log.action) && existingLog.timestamp === log.ts)
-            );
-            if (!isDuplicate) {
-              this.logs.unshift({
-                timestamp: log.ts,
-                source: log.actor === 'system' ? 'PGL-SYS' : 'USER-CLI',
-                message: `[${log.target.toUpperCase()}] ${log.action.toUpperCase()} (${log.hash}) - Ref: ${log.id}`,
-                type: log.action.includes('denied') || log.action.includes('fail') ? 'error' : 'info'
-              });
-            }
-          });
-          // Keep logs size bounded
-          if (this.logs.length > 100) {
-            this.logs = this.logs.slice(0, 100);
-          }
-        }
-
-        // Sync Policy Events into telemetry logs for live awareness
-        if (overview.policy_events && overview.policy_events.length > 0) {
-          overview.policy_events.forEach(event => {
-            const isDuplicate = this.logs.some(existingLog =>
-              existingLog.message.includes(event.title) && existingLog.message.includes(event.body)
-            );
-            if (!isDuplicate) {
-              this.logs.unshift({
-                timestamp: event.t || new Date().toISOString(),
-                source: 'ArbiterOS',
-                message: `[POLICY] ${event.title}: ${event.body}`,
-                type: event.tone === 'warn' || event.tone === 'warning' ? 'warn' : 'info'
-              });
-            }
-          });
-        }
-
-        // Sync Security Alerts
-        if (overview.alerts && overview.alerts.length > 0) {
-          overview.alerts.forEach(alert => {
-            const isDuplicate = this.logs.some(existingLog =>
-              existingLog.message.includes(alert.id)
-            );
-            if (!isDuplicate) {
-              this.logs.unshift({
-                timestamp: new Date().toISOString(),
-                source: 'SEKED',
-                message: `[ALERT:${alert.severity.toUpperCase()}] ${alert.title} (${alert.source}) — Ref: ${alert.id}`,
-                type: alert.severity === 'critical' || alert.severity === 'high' ? 'error' : 'warn'
-              });
-            }
-          });
-        }
-
-        // Sync Real runs into our runs state
-        if (overview.recent_runs && overview.recent_runs.length > 0) {
-          overview.recent_runs.forEach(realRun => {
-            // Check if this run is already present in our runs list
-            const existingIndex = this.runs.findIndex(r => r.id === realRun.id);
-            const runStatus: RunStatus = realRun.policy === 'violated' || realRun.policy === 'redacted' ? 'failed' : 'completed';
-            
-            const mappedRun: VeklomRun = {
-              id: realRun.id,
-              intent: `Inference via ${realRun.model} (${realRun.route})`,
-              status: runStatus,
-              timestamp: realRun.ts || new Date().toISOString(),
-              duration: `${realRun.latency}ms`,
-              currentStep: 'Attestation',
-              steps: [
-                { name: 'Intent', status: 'completed', hash: generateHash('int'), details: 'User intent parsed and parsed into PGL representation.' },
-                { name: 'Plan', status: 'completed', hash: generateHash('pln'), details: 'Plan generated for model routing.' },
-                { name: 'ArbiterOS', status: 'completed', hash: generateHash('arb'), details: `Checked model execution policies.` },
-                { name: 'Redis Lua', status: 'completed', hash: generateHash('lua'), details: 'Storage and rate-limiting limits checked.' },
-                { name: 'Attestation', status: 'completed', hash: generateHash('att'), details: `State root attested. Cost: $${realRun.cost.toFixed(5)}` }
-              ],
-              attestation: {
-                seked: 'passed',
-                arbiter: 'passed',
-                converge: 'passed'
-              },
-              evidenceCount: 1,
-              policyRule: 'SEC-GAS-LIMIT-MAX',
-              policyStatus: realRun.policy === 'violated' || realRun.policy === 'redacted' ? 'violated' : 'passed',
-              policyDetails: `Validated model route: ${realRun.model}`,
-              hash: realRun.id
-            };
-
-            if (existingIndex >= 0) {
-              // Update existing
-              this.runs[existingIndex] = {
-                ...this.runs[existingIndex],
-                status: mappedRun.status,
-                duration: mappedRun.duration,
-                policyStatus: mappedRun.policyStatus
-              };
-            } else {
-              // Insert new at the beginning
-              this.runs.unshift(mappedRun);
-            }
-          });
-          // Keep runs bounded
-          if (this.runs.length > 100) {
-            this.runs = this.runs.slice(0, 100);
-          }
-        }
-      }
-    } catch (err) {
-      console.error('[SYNC ERROR] Failed to sync with backend.', err);
-    }
-  }
-
   // Make random changes to the system core state to make it look incredibly alive!
   private tick() {
-    // 1. Sync with real backend data first
-    this.syncWithBackend();
-
-    // 2. Randomly update Agent CPU, memory, and add tick log
+    // 1. Randomly update Agent CPU, memory, and add tick log
     const activeAgents = this.agents.filter(a => a.status === 'Active');
     const idleAgents = this.agents.filter(a => a.status === 'Idle');
     
@@ -690,68 +463,21 @@ export class ControlPlaneSimulationStore {
     this.notify();
   }
 
-  // Force trigger a manual execution via cAPI
-  public async triggerManualRun(intentText: string, policyText: string = 'SEC-GAS-LIMIT-MAX') {
+  // Force trigger an manual execution
+  public triggerManualRun(intentText: string, policyText: string = 'SEC-GAS-LIMIT-MAX') {
     const isSuccess = Math.random() < 0.85;
     const ruleObj = policyRules.find(p => p.rule === policyText) || policyRules[0];
     
-    // Default fallback values
-    let evidence_id = "EV-PENDING-NETWORK";
-    let policyStatus = isSuccess ? 'passed' : 'violated';
-    
-    // Pick an agent (the first one that is active or fallback)
-    const agent = this.agents.find(a => a.status === 'Active') || this.agents[0];
-    const pgl_id = agent ? agent.id : "NO-PGL-ID";
-    
-    this.logs.unshift({
-      timestamp: new Date().toISOString(),
-      source: 'cAPI-GATE',
-      message: `Transmitting Intent [${intentText}] to cAPI Backend for Agent ${pgl_id}...`,
-      type: 'warn'
-    });
-    this.notify();
-
-    try {
-      // FIRE ACROSS THE INTERNET TO cAPI BACKEND
-      const receipt = await triggerCAPIExecution(
-        agent ? agent.name : "TERMINAL-MANUAL",
-        pgl_id,
-        "mcp",
-        "manual_override",
-        { intent: intentText, policy: policyText }
-      );
-      
-      evidence_id = receipt.evidence_chain_id;
-      policyStatus = 'passed'; // If it returns, cAPI approved it
-      
-      this.logs.unshift({
-        timestamp: new Date().toISOString(),
-        source: 'PGL-EVIDENCE',
-        message: `cAPI Approved. Cryptographic Receipt: ${evidence_id}`,
-        type: 'info'
-      });
-      
-    } catch (e: any) {
-      console.error(e);
-      policyStatus = 'violated';
-      this.logs.unshift({
-        timestamp: new Date().toISOString(),
-        source: 'cAPI-VETO',
-        message: `PACKET DROPPED: ${e.message}`,
-        type: 'error'
-      });
-    }
-
     const newRun: VeklomRun = {
       id: `VR-${String(9482 + this.runs.length).padStart(5, '0')}`,
       intent: intentText || 'Manual multiplexer override allocation',
-      status: policyStatus === 'passed' ? 'running' : 'failed',
+      status: 'running',
       timestamp: new Date().toISOString(),
-      duration: policyStatus === 'passed' ? 'Calculating...' : 'DROPPED',
+      duration: 'Calculating...',
       currentStep: 'Intent',
       steps: [
-        { name: 'Intent', status: 'completed', hash: generateHash('int'), details: 'User intent parsed and converted to ExecutionIntent payload.' },
-        { name: 'cAPI Gateway', status: policyStatus === 'passed' ? 'completed' : 'failed', hash: evidence_id, details: policyStatus === 'passed' ? `Approved: ${evidence_id}` : 'VETO ENGAGED. Payload dropped.' },
+        { name: 'Intent', status: 'completed', hash: generateHash('int'), details: 'User intent parsed and parsed into PGL representation.' },
+        { name: 'Plan', status: 'active', hash: generateHash('pln'), details: 'Generated manual override run path.' },
         { name: 'ArbiterOS', status: 'pending', hash: generateHash('arb'), details: `Checking rule restrictions on ${ruleObj.rule}.` },
         { name: 'Redis Lua', status: 'pending', hash: generateHash('lua'), details: 'Lua storage queue placement.' },
         { name: 'Attestation', status: 'pending', hash: generateHash('att'), details: 'Final proof sealing.' }
@@ -763,12 +489,18 @@ export class ControlPlaneSimulationStore {
       },
       evidenceCount: 1,
       policyRule: ruleObj.rule,
-      policyStatus: policyStatus as any,
+      policyStatus: isSuccess ? 'passed' : 'violated',
       policyDetails: ruleObj.desc,
-      hash: evidence_id !== "EV-PENDING-NETWORK" ? evidence_id : generateHash('vr')
+      hash: generateHash('vr')
     };
 
     this.runs.unshift(newRun);
+    this.logs.unshift({
+      timestamp: new Date().toISOString(),
+      source: 'MCP-IO',
+      message: `Manual high-priority control override triggered: ${newRun.id}`,
+      type: 'warn'
+    });
     this.notify();
     return newRun;
   }

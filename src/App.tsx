@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Cpu } from 'lucide-react';
+import { controlStore } from './data/simulation';
 import { AgentNode, VeklomRun, Delegate, TelemetryTick } from './types';
 import Sidebar from './components/Sidebar';
 import SwarmMap from './components/SwarmMap';
@@ -12,16 +12,11 @@ import RunSpine from './components/RunSpine';
 import CouncilMatrix from './components/CouncilMatrix';
 import DataGrid from './components/DataGrid';
 import LiveTelemetry from './components/LiveTelemetry';
-import QuantumTerminal from './components/QuantumTerminal';
-import GenomeLedgerOnboarding from './components/GenomeLedgerOnboarding';
-import IncidentsSlashing from './components/IncidentsSlashing';
-import { AmphotericRuntimeControl } from './components/AmphotericRuntimeControl';
-import NexusProtocol from './components/NexusProtocol';
-import { controlStore } from './data/simulation';
+import { Shield, Radio, Flame, Cpu, Gauge, AlertOctagon } from 'lucide-react';
 
 export default function App() {
   // Primary Navigation State
-  const [activeTab, setActiveTab] = useState<string>('terminal');
+  const [activeTab, setActiveTab] = useState<string>('overview');
 
   // Real-time ticking UTC clock for Geometric Balance theme
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -38,48 +33,74 @@ export default function App() {
   }, []);
 
   // Local Reactive State mirroring our central control simulation store
-  const [agents, setAgents] = useState<AgentNode[]>(controlStore.agents);
-  const [runs, setRuns] = useState<VeklomRun[]>(controlStore.runs);
-  const [delegates, setDelegates] = useState<Delegate[]>(controlStore.delegates);
-  const [logs, setLogs] = useState<TelemetryTick[]>(controlStore.logs);
+  const [agents, setAgents] = useState<AgentNode[]>([]);
+  const [runs, setRuns] = useState<VeklomRun[]>([]);
+  const [delegates, setDelegates] = useState<Delegate[]>([]);
+  const [logs, setLogs] = useState<TelemetryTick[]>([]);
   const [liveMetrics, setLiveMetrics] = useState(controlStore.liveMetrics);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
 
-  // Future integration point:
+  // Sync to simulation ticks
   useEffect(() => {
-    return controlStore.subscribe(() => {
+    // Initial load
+    setAgents([...controlStore.agents]);
+    setRuns([...controlStore.runs]);
+    setDelegates([...controlStore.delegates]);
+    setLogs([...controlStore.logs]);
+    setLiveMetrics({ ...controlStore.liveMetrics });
+
+    // Subscribe to periodic simulation dispatch intervals (WebSockets mock)
+    const unsubscribe = controlStore.subscribe(() => {
       setAgents([...controlStore.agents]);
       setRuns([...controlStore.runs]);
       setDelegates([...controlStore.delegates]);
       setLogs([...controlStore.logs]);
       setLiveMetrics({ ...controlStore.liveMetrics });
     });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   // Update a single agent properties (Reboot / Diagnostics actions)
   const handleAgentUpdate = (id: string, updatedFields: Partial<AgentNode>) => {
-    setAgents(prev => prev.map(a => a.id === id ? { ...a, ...updatedFields } : a));
+    controlStore.agents = controlStore.agents.map(a => {
+      if (a.id === id) {
+        return { ...a, ...updatedFields };
+      }
+      return a;
+    });
+    setAgents([...controlStore.agents]);
   };
 
   // Propose standard motion on the Legislative Matrix
   const handleVotePropose = (proposalName: string) => {
-    setLogs(prev => [{
+    // Shift votes of delegates on proposals
+    controlStore.delegates = controlStore.delegates.map((d, index) => {
+      // Create random distribution of yes/no/abstain represents weight shifts
+      const options: ('yea' | 'nay' | 'abstain' | 'pending')[] = ['yea', 'yea', 'yea', 'yea', 'nay', 'abstain'];
+      const nextVote = options[Math.floor(Math.random() * options.length)];
+      return {
+        ...d,
+        vote: nextVote as any,
+        weight: Math.floor(Math.random() * 15) + 10 // Shift weights slightly
+      };
+    });
+
+    controlStore.logs.unshift({
       timestamp: new Date().toISOString(),
       source: 'Council',
-      message: `LEGISLATURE: Motion initiated for ${proposalName}. Transmitting to backend for validation.`,
+      message: `LEGISLATURE: Motion initiated. Recalculating representative weights.`,
       type: 'warn'
-    }, ...prev]);
+    });
   };
 
   // Handle high priority manual execution injection
-  const handleTriggerManualOverride = async (intentText: string, policyText: string) => {
-    // Empty state fallback - just log it for now
-    setLogs(prev => [{
-      timestamp: new Date().toISOString(),
-      source: 'Operator',
-      message: `MANUAL OVERRIDE: ${intentText}`,
-      type: 'warn'
-    }, ...prev]);
+  const handleTriggerManualOverride = (intentText: string, policyText: string) => {
+    const newRun = controlStore.triggerManualRun(intentText, policyText);
+    setSelectedRunId(newRun.id);
+    setActiveTab('spine'); // Shift view to spine to show live lock progression!
   };
 
   return (
@@ -96,22 +117,8 @@ export default function App() {
             <span className="text-xs font-bold tracking-[0.2em] uppercase">UACP v5 Control Plane</span>
           </div>
           <div className="h-4 w-px bg-white/20"></div>
-          <div className="flex items-center gap-4 font-mono text-[10px] text-white/50 bg-black/50 px-2 py-1 rounded border border-white/10">
-            <span className="text-white/30">CAPI_NODE:</span>
-            <select 
-              className="bg-transparent text-white/80 outline-none cursor-pointer hover:text-white transition-colors"
-              onChange={(e) => {
-                import('./data/pglLoader').then(m => m.setCapiBaseUrl(e.target.value));
-              }}
-              defaultValue="https://api.veklom.com"
-            >
-              <option value="https://api.veklom.com" className="bg-black text-white">Veklom Cloud (api.veklom.com)</option>
-              <option value="http://localhost:8088" className="bg-black text-white">Veklom Local (8088)</option>
-              <option value="http://localhost:8080" className="bg-black text-white">Interlink Rust (8080)</option>
-              <option value="https://cappo.veklom.com" className="bg-black text-white">CAPPO Cloud (cappo-backend)</option>
-              <option value="http://localhost:8001" className="bg-black text-white">CAPPO Local (8001)</option>
-            </select>
-            <div className="w-px h-3 bg-white/20"></div>
+          <div className="flex gap-4 font-mono text-[10px] text-white/50">
+            <span>NODE_ID: US-EAST-B82</span>
             <span>LATENCY: 4MS</span>
             <span className="text-[#00FF66]">OS_HEALTH: 100%</span>
           </div>
@@ -127,11 +134,6 @@ export default function App() {
             </div>
           </div>
           <div className="text-xs font-mono tabular-nums text-white/70">{currentTime}</div>
-          <div className="ml-4">
-            {/* eslint-disable-next-line */}
-            {/* @ts-ignore - appkit-button is a Reown Web Component */}
-            <appkit-button />
-          </div>
         </div>
       </header>
 
@@ -147,10 +149,10 @@ export default function App() {
         />
 
         {/* 3. Central Application Viewport */}
-        <main className="flex-grow flex flex-col justify-between overflow-y-auto overflow-x-hidden relative min-w-0 border-l border-white/5">
+        <main className="flex-grow flex flex-col justify-between overflow-hidden relative min-w-0 border-l border-white/5">
           
           {/* VIEW CONTAINER */}
-          <div className="flex-grow overflow-y-auto overflow-x-hidden relative bg-[#030303]">
+          <div className="flex-grow overflow-hidden relative bg-[#030303]">
             {activeTab === 'overview' && (
               <SwarmMap 
                 agents={agents} 
@@ -158,24 +160,18 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'terminal' && (
-              <QuantumTerminal />
-            )}
-
-            {activeTab === 'runtime' && (
-              <AmphotericRuntimeControl />
+            {activeTab === 'spine' && (
+              <RunSpine 
+                runs={runs}
+                selectedRunId={selectedRunId}
+                onSelectRun={setSelectedRunId}
+              />
             )}
 
             {activeTab === 'runs' && (
-              <IncidentsSlashing />
-            )}
-
-            {activeTab === 'nexus' && (
-              <NexusProtocol />
-            )}
-
-            {activeTab === 'id' && (
-              <GenomeLedgerOnboarding />
+              <DataGrid 
+                runs={runs}
+              />
             )}
 
             {activeTab === 'committee' && (
@@ -183,28 +179,6 @@ export default function App() {
                 delegates={delegates}
                 onVotePropose={handleVotePropose}
               />
-            )}
-
-            {(['playground', 'staking', 'duel', 'discovery', 'treasury'].includes(activeTab)) && (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-[#030303] text-white/20 font-mono gap-4">
-                <div className="w-16 h-16 rounded-full border border-dashed border-white/10 flex items-center justify-center animate-pulse">
-                  <Cpu size={32} />
-                </div>
-                <div className="text-center">
-                  <h3 className="text-sm font-bold uppercase tracking-widest text-white/40 mb-1">Module Initializing</h3>
-                  <p className="text-[10px] uppercase">Secure connection to {activeTab.toUpperCase()}_NODE pending...</p>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'interlink' && (
-              <div className="w-full h-full bg-[#030303] overflow-hidden">
-                <iframe 
-                  src="https://interlink.veklom.com/ui" 
-                  className="w-full h-full border-0" 
-                  title="Interlink API Console" 
-                />
-              </div>
             )}
           </div>
 

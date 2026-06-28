@@ -6,7 +6,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { VeklomRun } from '../types';
-import { Search, ShieldAlert, Shield, FileSpreadsheet, Lock } from 'lucide-react';
+import { Search, Info, ShieldAlert, CheckCircle2, Shield, AlertTriangle, FileSpreadsheet, Lock } from 'lucide-react';
 
 interface DataGridProps {
   runs: VeklomRun[];

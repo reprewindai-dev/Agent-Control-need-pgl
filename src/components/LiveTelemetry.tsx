@@ -21,7 +21,6 @@ interface LiveTelemetryProps {
   onTriggerManualOverride: (intent: string, policy: string) => void;
 }
 
-import { useRef, useEffect } from 'react';
 export default function LiveTelemetry({ logs, metrics, onTriggerManualOverride }: LiveTelemetryProps) {
   const [overrideIntent, setOverrideIntent] = useState('');
   const [overridePolicy, setOverridePolicy] = useState('SEC-GAS-LIMIT-MAX');
@@ -44,11 +43,6 @@ export default function LiveTelemetry({ logs, metrics, onTriggerManualOverride }
       }, 1000);
     }
   };
-
-  const logEndRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs]);
 
   const getLogColor = (type: string) => {
     switch (type) {
@@ -119,20 +113,17 @@ export default function LiveTelemetry({ logs, metrics, onTriggerManualOverride }
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 flex-grow bg-black/20">
         
         {/* Terminal Streams System panel */}
-        <div className="lg:col-span-8 flex flex-col h-60 relative group">
+        <div className="lg:col-span-8 flex flex-col h-60">
           <div className="flex items-center justify-between text-[10px] text-white/40 uppercase tracking-widest font-black mb-1.5 pb-1 border-b border-white/10">
-            <span>MCP IO SYSCON STREAM & cAPI CLI</span>
+            <span>MCP IO SYSCON STREAM</span>
             <span className="flex items-center gap-1 text-matrix-emerald">
               <span className="w-1.5 h-1.5 bg-matrix-emerald animate-pulse" /> LIVE STREAMING
             </span>
           </div>
 
-          <div
-            id="terminal-container"
-            className="flex-grow bg-[#040406] border border-white/10 rounded-none p-3 font-mono text-[10.5px] leading-relaxed overflow-y-auto space-y-2 selection:bg-electric-cyan/20 selector-all flex flex-col"
-          >
+          <div className="flex-grow bg-[#040406] border border-white/10 rounded-none p-3 font-mono text-[10.5px] leading-relaxed overflow-y-auto space-y-2 selection:bg-electric-cyan/20 selector-all">
             <AnimatePresence initial={false}>
-              {[...logs].reverse().map((log) => (
+              {logs.map((log) => (
                 <motion.div
                   key={`${log.timestamp}-${log.message}`}
                   initial={{ opacity: 0, x: -5 }}
@@ -140,7 +131,7 @@ export default function LiveTelemetry({ logs, metrics, onTriggerManualOverride }
                   className="flex items-start gap-2.5 hover:bg-white/[0.02]"
                 >
                   <span className="text-white/20 select-none">[{log.timestamp.substring(11, 19)}]</span>
-                  <span className="text-electric-cyan font-bold select-none min-w-[70px] uppercase shrink-0">
+                  <span className="text-electric-cyan font-bold select-none min-w-[70px] uppercase">
                     [{log.source}]
                   </span>
                   <span className={`${getLogColor(log.type)} tracking-tight break-all font-sans text-xs`}>
@@ -149,55 +140,10 @@ export default function LiveTelemetry({ logs, metrics, onTriggerManualOverride }
                 </motion.div>
               ))}
             </AnimatePresence>
-            <div className="flex items-center mt-2 group focus-within:ring-0">
-                <span className="text-electric-cyan font-bold select-none min-w-[70px] uppercase shrink-0">
-                  [USER-CLI] &gt;
-                </span>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const input = e.currentTarget.elements.namedItem('cli-input') as HTMLInputElement;
-                    const val = input.value.trim();
-                    if (!val) return;
-
-                    // Simple CLI parsing simulation
-                    let responseMsg = '';
-                    const lowerVal = val.toLowerCase();
-                    if (lowerVal.startsWith('capi')) {
-                      responseMsg = `cAPI Interface activated for command: ${val}. Connecting to veklom-byos-backend...`;
-                    } else if (lowerVal.startsWith('veklom')) {
-                      responseMsg = `Veklom Backend: Evaluating deterministic routing request...`;
-                    } else if (lowerVal.startsWith('cappo')) {
-                      responseMsg = `CAPPO Runtime: Triggering PGL governed execution & ExecutionIdentityV1 validation...`;
-                    } else if (lowerVal.startsWith('exec') || lowerVal.startsWith('/v1/exec')) {
-                      responseMsg = `Dispatching manual intent via CLI.`;
-                      onTriggerManualOverride(val, overridePolicy);
-                    } else if (lowerVal === 'help') {
-                      responseMsg = `Supported commands: capi <cmd>, veklom <cmd>, cappo <cmd>, exec <intent>`;
-                    } else {
-                      responseMsg = `Command not recognized. Type 'help' for available CLI commands.`;
-                    }
-
-                    input.value = '';
-
-                    window.dispatchEvent(new CustomEvent('cli-command', { detail: { command: val, response: responseMsg } }));
-                  }}
-                  className="w-full flex-grow flex"
-                >
-                  <input
-                    id="cli-input"
-                    name="cli-input"
-                    type="text"
-                    autoComplete="off"
-                    className="w-full bg-transparent border-none text-white focus:outline-none font-sans text-xs tracking-tight ml-2"
-                    placeholder="Enter cAPI / veklom / cappo command..."
-                  />
-                </form>
-            </div>
-            <div ref={logEndRef} />
           </div>
         </div>
 
+        {/* Manual high priority override console Form */}
         <div className="lg:col-span-4 flex flex-col justify-between h-60 border border-white/10 rounded-none p-4 bg-[#0A0A0C]">
           <div>
             <div className="text-[10px] text-white/45 font-black uppercase tracking-widest mb-1.5">

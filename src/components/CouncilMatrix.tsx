@@ -4,9 +4,9 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Delegate } from '../types';
-import { Users, Send, AlertTriangle } from 'lucide-react';
+import { Users, Info, ShieldAlert, CheckSquare, RefreshCw, Send, AlertTriangle } from 'lucide-react';
 
 interface CouncilMatrixProps {
   delegates: Delegate[];
