@@ -23,7 +23,6 @@ import {
   Coins,
   Sword,
   Fingerprint,
-  Globe,
   Scale,
   FileLock,
   Wallet
@@ -83,14 +82,13 @@ export default function Sidebar({ activeTab, setActiveTab, mcpHeartbeat, through
         { id: 'staking', name: 'Staking Protocol', icon: Coins },
         { id: 'duel', name: 'Agent Duel', icon: Sword },
         { id: 'id', name: 'Veklom ID', icon: Fingerprint },
-        { id: 'discovery', name: 'Veklom Discovery', icon: Globe },
       ]
     },
     {
       title: 'ZERO-TRUST',
       items: [
         { id: 'committee', name: 'Governance & Identity', icon: Scale, isLive: true },
-        { id: 'covenant', name: 'Covenant Console', icon: FileLock },
+        { id: 'interlink', name: 'Interlink Console', icon: FileLock },
       ]
     },
     {

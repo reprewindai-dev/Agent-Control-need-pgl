@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { Cpu } from 'lucide-react';
 import { AgentNode, VeklomRun, Delegate, TelemetryTick } from './types';
 import Sidebar from './components/Sidebar';
 import SwarmMap from './components/SwarmMap';
@@ -15,6 +16,8 @@ import QuantumTerminal from './components/QuantumTerminal';
 import GenomeLedgerOnboarding from './components/GenomeLedgerOnboarding';
 import IncidentsSlashing from './components/IncidentsSlashing';
 import { AmphotericRuntimeControl } from './components/AmphotericRuntimeControl';
+import NexusProtocol from './components/NexusProtocol';
+import { controlStore } from './data/simulation';
 
 export default function App() {
   // Primary Navigation State
@@ -125,7 +128,8 @@ export default function App() {
           </div>
           <div className="text-xs font-mono tabular-nums text-white/70">{currentTime}</div>
           <div className="ml-4">
-            {/* @ts-expect-error - Web Component typing */}
+            {/* eslint-disable-next-line */}
+            {/* @ts-ignore - appkit-button is a Reown Web Component */}
             <appkit-button />
           </div>
         </div>
@@ -166,6 +170,10 @@ export default function App() {
               <IncidentsSlashing />
             )}
 
+            {activeTab === 'nexus' && (
+              <NexusProtocol />
+            )}
+
             {activeTab === 'id' && (
               <GenomeLedgerOnboarding />
             )}
@@ -177,7 +185,7 @@ export default function App() {
               />
             )}
 
-            {(['playground', 'runtime', 'nexus', 'staking', 'duel', 'discovery', 'covenant', 'treasury'].includes(activeTab)) && (
+            {(['playground', 'staking', 'duel', 'discovery', 'treasury'].includes(activeTab)) && (
               <div className="w-full h-full flex flex-col items-center justify-center bg-[#030303] text-white/20 font-mono gap-4">
                 <div className="w-16 h-16 rounded-full border border-dashed border-white/10 flex items-center justify-center animate-pulse">
                   <Cpu size={32} />
@@ -186,6 +194,16 @@ export default function App() {
                   <h3 className="text-sm font-bold uppercase tracking-widest text-white/40 mb-1">Module Initializing</h3>
                   <p className="text-[10px] uppercase">Secure connection to {activeTab.toUpperCase()}_NODE pending...</p>
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'interlink' && (
+              <div className="w-full h-full bg-[#030303] overflow-hidden">
+                <iframe 
+                  src="https://interlink.veklom.com/ui" 
+                  className="w-full h-full border-0" 
+                  title="Interlink API Console" 
+                />
               </div>
             )}
           </div>
