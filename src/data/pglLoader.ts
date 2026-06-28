@@ -64,7 +64,8 @@ export const triggerCAPIExecution = async (
   pgl_id: string,
   target_protocol: string,
   action: string,
-  payload: any
+  payload: any,
+  onProgress?: (log: string) => void
 ): Promise<ExecutionReceipt> => {
   const intent = {
     agent_id,
@@ -81,7 +82,7 @@ export const triggerCAPIExecution = async (
 
   const headers: any = {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
+    'Accept': 'text/event-stream',
     'X-Veklom-Origin-Node': API_BASE_URL,
     'X-Veklom-Trace-Id': traceId,
     'X-Veklom-Timestamp': Date.now().toString(),
@@ -137,12 +138,54 @@ export const triggerCAPIExecution = async (
   }
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail?.message || `cAPI execution failed with status ${response.status}`);
+    let errMessage = `cAPI execution failed with status ${response.status}`;
+    try {
+      const errorData = await response.json();
+      errMessage = errorData.detail?.message || errorData.detail || errMessage;
+    } catch { /* ignore */ }
+    throw new Error(errMessage);
   }
 
-  const data = await response.json();
-  return data as ExecutionReceipt;
+  if (!response.body) throw new Error("No response body for streaming");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let receipt: ExecutionReceipt | null = null;
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || ""; 
+    
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const dataStr = line.substring(6).trim();
+        if (!dataStr) continue;
+        try {
+          const eventData = JSON.parse(dataStr);
+          if (eventData.type === 'log') {
+            if (onProgress) onProgress(`[Phase ${eventData.phase}] ${eventData.text}`);
+          } else if (eventData.type === 'error') {
+            throw new Error(eventData.detail?.message || eventData.detail || 'Execution error');
+          } else if (eventData.type === 'receipt') {
+            receipt = eventData.data;
+          }
+        } catch (e) {
+          console.warn("Failed to parse SSE JSON:", dataStr);
+        }
+      }
+    }
+  }
+
+  if (!receipt) {
+    throw new Error("Stream closed without returning an execution receipt");
+  }
+
+  return receipt;
 };
 
 export interface WorkspaceOverview {
