@@ -265,224 +265,341 @@ export default function RunSpine({ runs, selectedRunId, onSelectRun }: RunSpineP
             ATTESTATION CORE COUPLER
           </div>
 
-          <div className="relative w-64 h-64 flex items-center justify-center my-6">
-            
-            {/* Layer 1 Ring: SEKED Enclave Integrity checking (Outer ring) */}
-            <motion.svg 
-              className="absolute inset-0 w-full h-full"
-              style={{ originX: '128px', originY: '128px' }}
-              animate={isCompleted ? {
-                rotate: 270, // -90 offset + 360 rotation to snap!
-                scale: 1,
-              } : isRunning ? {
-                rotate: [0, 360],
-                scale: 1,
-              } : {
-                rotate: -90,
-                scale: 1,
-              }}
-              transition={isCompleted ? {
-                rotate: { type: 'spring', stiffness: 225, damping: 13 }
-              } : isRunning ? {
-                rotate: { repeat: Infinity, duration: 10, ease: 'linear' }
-              } : {
-                duration: 0.3
-              }}
-            >
-              <motion.circle
-                cx="128"
-                cy="128"
-                animate={isCompleted ? {
-                  r: 102,
-                  strokeWidth: 3.5,
-                  strokeDashoffset: 0,
-                  strokeOpacity: 0.95,
-                  stroke: '#00FF66'
-                } : {
-                  r: 110,
-                  strokeWidth: 2,
-                  strokeDashoffset: isFailed ? 350 : 200,
-                  strokeOpacity: 0.5,
-                  stroke: isFailed ? '#FF003C' : isRunning ? '#00E5FF' : '#222'
-                }}
-                transition={{
-                  type: 'spring',
-                  stiffness: 225,
-                  damping: 13
-                }}
-                className="fill-none transition-colors duration-550"
-                strokeDasharray="690"
-              />
-            </motion.svg>
+          {/* Compute status of the three verification layers dynamically */}
+          {(() => {
+            const getLayerStatus = (layerName: 'SEKED' | 'ArbiterOS' | 'ConvergeOS') => {
+              if (isCompleted) return 'passed';
+              if (isFailed) {
+                const planStep = selectedRun.steps.find(s => s.name === 'Plan');
+                const arbiterStep = selectedRun.steps.find(s => s.name === 'ArbiterOS');
+                const redisStep = selectedRun.steps.find(s => s.name === 'Redis Lua');
+                const attestStep = selectedRun.steps.find(s => s.name === 'Attestation');
 
-            {/* Layer 2 Ring: ArbiterOS Governance verification (Middle ring) */}
-            <motion.svg 
-              className="absolute inset-0 w-full h-full"
-              style={{ originX: '128px', originY: '128px' }}
-              animate={isCompleted ? {
-                rotate: 405, // 45 offset + 360 rot
-                scale: 1,
-              } : isRunning ? {
-                rotate: [360, 0],
-                scale: 1,
-              } : {
-                rotate: 45,
-                scale: 1,
-              }}
-              transition={isCompleted ? {
-                rotate: { type: 'spring', stiffness: 225, damping: 13 }
-              } : isRunning ? {
-                rotate: { repeat: Infinity, duration: 7, ease: 'linear' }
-              } : {
-                duration: 0.3
-              }}
-            >
-              <motion.circle
-                cx="128"
-                cy="128"
-                animate={isCompleted ? {
-                  r: 90,
-                  strokeWidth: 3.5,
-                  strokeDashoffset: 0,
-                  strokeOpacity: 0.85,
-                  stroke: '#00FF66'
-                } : {
-                  r: 90,
-                  strokeWidth: 2,
-                  strokeDashoffset: 150,
-                  strokeOpacity: 0.5,
-                  stroke: isFailed ? '#FF003C' : isRunning ? '#FFAB00' : '#222'
-                }}
-                transition={{
-                  type: 'spring',
-                  stiffness: 225,
-                  damping: 13
-                }}
-                className="fill-none transition-colors duration-550"
-                strokeDasharray="565"
-              />
-            </motion.svg>
+                if (layerName === 'SEKED') {
+                  if (planStep?.status === 'failed') return 'failed';
+                  if (planStep?.status === 'pending') return 'pending';
+                  return 'passed';
+                }
+                if (layerName === 'ArbiterOS') {
+                  if (arbiterStep?.status === 'failed') return 'failed';
+                  if (arbiterStep?.status === 'pending') return 'pending';
+                  return 'passed';
+                }
+                if (layerName === 'ConvergeOS') {
+                  if (redisStep?.status === 'failed' || attestStep?.status === 'failed') return 'failed';
+                  if (redisStep?.status === 'pending' || attestStep?.status === 'pending') return 'pending';
+                  return 'passed';
+                }
+              }
+              
+              if (isRunning) {
+                if (layerName === 'SEKED') {
+                  const planStep = selectedRun.steps.find(s => s.name === 'Plan');
+                  if (planStep?.status === 'completed') return 'passed';
+                  if (planStep?.status === 'active') return 'active';
+                  return 'pending';
+                }
+                if (layerName === 'ArbiterOS') {
+                  const arbiterStep = selectedRun.steps.find(s => s.name === 'ArbiterOS');
+                  if (arbiterStep?.status === 'completed') return 'passed';
+                  if (arbiterStep?.status === 'active') return 'active';
+                  return 'pending';
+                }
+                if (layerName === 'ConvergeOS') {
+                  const redisStep = selectedRun.steps.find(s => s.name === 'Redis Lua');
+                  const attestStep = selectedRun.steps.find(s => s.name === 'Attestation');
+                  if (attestStep?.status === 'completed' || attestStep?.status === 'active') return 'active';
+                  if (redisStep?.status === 'completed') return 'passed';
+                  if (redisStep?.status === 'active') return 'active';
+                  return 'pending';
+                }
+              }
+              
+              return 'pending';
+            };
 
-            {/* Layer 3 Ring: ConvergeOS Consensus matching (Inner ring) */}
-            <motion.svg 
-              className="absolute inset-0 w-full h-full"
-              style={{ originX: '128px', originY: '128px' }}
-              animate={isCompleted ? {
-                rotate: 360, // 0 offset + 360 rot
-                scale: 1,
-              } : isRunning ? {
-                rotate: [0, 360],
-                scale: 1,
-              } : {
-                rotate: 0,
-                scale: 1,
-              }}
-              transition={isCompleted ? {
-                rotate: { type: 'spring', stiffness: 225, damping: 13 }
-              } : isRunning ? {
-                rotate: { repeat: Infinity, duration: 4, ease: 'linear' }
-              } : {
-                duration: 0.3
-              }}
-            >
-              <motion.circle
-                cx="128"
-                cy="128"
-                animate={isCompleted ? {
-                  r: 78,
-                  strokeWidth: 3.5,
-                  strokeDashoffset: 0,
-                  strokeOpacity: 0.75,
-                  stroke: '#00FF66'
-                } : {
-                  r: 70,
-                  strokeWidth: 2,
-                  strokeDashoffset: 220,
-                  strokeOpacity: 0.5,
-                  stroke: isFailed ? '#FF003C' : isRunning ? '#00FF66' : '#222'
-                }}
-                transition={{
-                  type: 'spring',
-                  stiffness: 225,
-                  damping: 13
-                }}
-                className="fill-none transition-colors duration-550"
-                strokeDasharray="440"
-              />
-            </motion.svg>
+            const sekedStatus = getLayerStatus('SEKED');
+            const arbiterStatus = getLayerStatus('ArbiterOS');
+            const convergeStatus = getLayerStatus('ConvergeOS');
+            const allPassed = sekedStatus === 'passed' && arbiterStatus === 'passed' && convergeStatus === 'passed';
 
-            {/* Core Lock State Lock Padlock SVG Centered */}
-            <motion.div
-              animate={isCompleted ? {
-                scale: [1, 1.25, 0.95, 1],
-                borderColor: 'rgba(0, 255, 102, 0.3)',
-                boxShadow: '0 0 25px rgba(0, 255, 102, 0.35)',
-              } : isFailed ? {
-                scale: 1,
-                rotate: [0, 10, -10, 0],
-                borderColor: 'rgba(255, 0, 60, 0.3)',
-                boxShadow: '0 0 15px rgba(255, 0, 60, 0.1)',
-              } : {
-                scale: 1,
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                boxShadow: '0 0 0px rgba(0,0,0,0)',
-              }}
-              transition={isCompleted ? {
-                scale: { duration: 0.45, ease: 'easeOut' },
-                default: { duration: 0.3 }
-              } : { duration: 0.3 }}
-              className="absolute flex flex-col items-center justify-center p-4 rounded-none bg-black border"
-            >
-              {isCompleted ? (
-                <Lock className="w-8 h-8 text-matrix-emerald animate-pulse" />
-              ) : isFailed ? (
-                <AlertTriangle className="w-8 h-8 text-laser-red" />
-              ) : isRunning ? (
-                <Activity className="w-8 h-8 text-electric-cyan animate-spin" style={{ animationDuration: '3s' }} />
-              ) : (
-                <Lock className="w-8 h-8 text-white/30" />
-              )}
-            </motion.div>
-          </div>
+            return (
+              <>
+                <div className="relative w-64 h-64 flex items-center justify-center my-6">
+                  <svg viewBox="0 0 256 256" className="absolute inset-0 w-full h-full select-none">
+                    <defs>
+                      <filter id="emerald-glow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="6" result="blur" />
+                        <feMerge>
+                          <feMergeNode in="blur" />
+                          <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                      </filter>
+                      <filter id="cyan-glow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="4" result="blur" />
+                        <feMerge>
+                          <feMergeNode in="blur" />
+                          <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                      </filter>
+                      <filter id="amber-glow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="4" result="blur" />
+                        <feMerge>
+                          <feMergeNode in="blur" />
+                          <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                      </filter>
+                    </defs>
 
-          {/* Validation Checklist UI representation */}
-          <div className="w-full space-y-2 border-t border-white/10 pt-4.5 font-mono text-[11px]">
-            <div className="flex items-center justify-between text-white/60 font-medium">
-              <span className="flex items-center gap-1.5">
-                <span className={`w-1.5 h-1.5 ${isCompleted ? 'bg-matrix-emerald' : isFailed ? 'bg-laser-red' : 'bg-electric-cyan animate-pulse'}`} /> 
-                1. SEKED ENCLAVEMENT Check
-              </span>
-              <strong className={isCompleted ? 'text-matrix-emerald' : isFailed ? 'text-laser-red' : 'text-electric-cyan'}>
-                {isCompleted ? 'PASSED' : isFailed ? 'REVOKED' : 'EVALUATING'}
-              </strong>
-            </div>
+                    {/* Backing guides */}
+                    <circle cx="128" cy="128" r="102" stroke="rgba(255,255,255,0.02)" strokeWidth="1" fill="none" />
+                    <circle cx="128" cy="128" r="82" stroke="rgba(255,255,255,0.02)" strokeWidth="1" fill="none" />
+                    <circle cx="128" cy="128" r="62" stroke="rgba(255,255,255,0.02)" strokeWidth="1" fill="none" />
 
-            <div className="flex items-center justify-between text-white/60 font-medium">
-              <span className="flex items-center gap-1.5">
-                <span className={`w-1.5 h-1.5 ${isCompleted ? 'bg-matrix-emerald' : isFailed ? 'bg-laser-red' : 'bg-electric-cyan animate-pulse'}`} />
-                2. ArbiterOS Policy Match
-              </span>
-              <strong className={isCompleted ? 'text-matrix-emerald' : isFailed ? 'text-laser-red' : 'text-electric-cyan'}>
-                {isCompleted ? 'PASSED' : isFailed ? 'VIOLATED' : 'EVALUATING'}
-              </strong>
-            </div>
+                    {/* OUTER LAYER: SEKED (R = 102) */}
+                    {sekedStatus !== 'pending' && (
+                      <motion.circle
+                        cx="128"
+                        cy="128"
+                        r="102"
+                        fill="none"
+                        animate={allPassed ? {
+                          stroke: '#00FF66',
+                          strokeDasharray: '640',
+                          strokeDashoffset: 0,
+                          strokeWidth: 4,
+                          strokeOpacity: 0.9,
+                          rotate: 360,
+                        } : sekedStatus === 'passed' ? {
+                          stroke: '#00E5FF',
+                          strokeDasharray: '640',
+                          strokeDashoffset: 0,
+                          strokeWidth: 2.5,
+                          strokeOpacity: 0.8,
+                          rotate: 0,
+                        } : sekedStatus === 'failed' ? {
+                          stroke: '#FF003C',
+                          strokeDasharray: '20 15',
+                          strokeDashoffset: [0, 350],
+                          strokeWidth: 2.5,
+                          strokeOpacity: 0.9,
+                        } : { // active
+                          stroke: '#00E5FF',
+                          strokeDasharray: '180 180',
+                          strokeDashoffset: [0, 360],
+                          strokeWidth: 2,
+                          strokeOpacity: 0.6,
+                        }}
+                        transition={allPassed ? {
+                          rotate: { type: 'spring', stiffness: 180, damping: 15 },
+                          default: { duration: 0.6 }
+                        } : sekedStatus === 'active' ? {
+                          strokeDashoffset: { repeat: Infinity, duration: 6, ease: 'linear' }
+                        } : sekedStatus === 'failed' ? {
+                          strokeDashoffset: { repeat: Infinity, duration: 15, ease: 'linear' }
+                        } : { duration: 0.5 }}
+                        style={{ originX: '128px', originY: '128px', transformOrigin: '128px 128px' }}
+                        filter={allPassed ? 'url(#emerald-glow)' : sekedStatus === 'active' ? 'url(#cyan-glow)' : undefined}
+                      />
+                    )}
 
-            <div className="flex items-center justify-between text-white/60 font-medium">
-              <span className="flex items-center gap-1.5">
-                <span className={`w-1.5 h-1.5 ${isCompleted ? 'bg-matrix-emerald' : isFailed ? 'bg-laser-red' : 'bg-electric-cyan animate-pulse'}`} />
-                3. ConvergeOS State Seal
-              </span>
-              <strong className={isCompleted ? 'text-matrix-emerald' : isFailed ? 'text-laser-red' : 'text-electric-cyan'}>
-                {isCompleted ? 'SEALED' : isFailed ? 'ABORTED' : 'SEALING'}
-              </strong>
-            </div>
-          </div>
+                    {/* MIDDLE LAYER: ArbiterOS (R = 82) */}
+                    {arbiterStatus !== 'pending' && (
+                      <motion.circle
+                        cx="128"
+                        cy="128"
+                        r="82"
+                        fill="none"
+                        animate={allPassed ? {
+                          stroke: '#00FF66',
+                          strokeDasharray: '515',
+                          strokeDashoffset: 0,
+                          strokeWidth: 4,
+                          strokeOpacity: 0.85,
+                          rotate: -360,
+                        } : arbiterStatus === 'passed' ? {
+                          stroke: '#FFAB00',
+                          strokeDasharray: '515',
+                          strokeDashoffset: 0,
+                          strokeWidth: 2.5,
+                          strokeOpacity: 0.8,
+                          rotate: 0,
+                        } : arbiterStatus === 'failed' ? {
+                          stroke: '#FF003C',
+                          strokeDasharray: '15 10',
+                          strokeDashoffset: [0, -250],
+                          strokeWidth: 2.5,
+                          strokeOpacity: 0.9,
+                        } : { // active
+                          stroke: '#FFAB00',
+                          strokeDasharray: '140 140',
+                          strokeDashoffset: [360, 0],
+                          strokeWidth: 2,
+                          strokeOpacity: 0.6,
+                        }}
+                        transition={allPassed ? {
+                          rotate: { type: 'spring', stiffness: 180, damping: 15 },
+                          default: { duration: 0.6 }
+                        } : arbiterStatus === 'active' ? {
+                          strokeDashoffset: { repeat: Infinity, duration: 5, ease: 'linear' }
+                        } : arbiterStatus === 'failed' ? {
+                          strokeDashoffset: { repeat: Infinity, duration: 12, ease: 'linear' }
+                        } : { duration: 0.5 }}
+                        style={{ originX: '128px', originY: '128px', transformOrigin: '128px 128px' }}
+                        filter={allPassed ? 'url(#emerald-glow)' : arbiterStatus === 'active' ? 'url(#amber-glow)' : undefined}
+                      />
+                    )}
 
-          <div className="mt-4 p-2 bg-white/[0.01] border border-white/5 rounded-none w-full text-center text-[10px] text-white/40 uppercase font-black">
-            {isCompleted && <span className="text-matrix-emerald text-glow-emerald font-bold">● COUPLER SECURELY LOCKED</span>}
-            {isFailed && <span className="text-laser-red text-glow-red font-bold">● COUPLER STATE ABORTED</span>}
-            {isRunning && <span className="text-electric-cyan font-bold tracking-widest animate-pulse">● SECURING ENCLAVE LOCKS...</span>}
-          </div>
+                    {/* INNER LAYER: ConvergeOS (R = 62) */}
+                    {convergeStatus !== 'pending' && (
+                      <motion.circle
+                        cx="128"
+                        cy="128"
+                        r="62"
+                        fill="none"
+                        animate={allPassed ? {
+                          stroke: '#00FF66',
+                          strokeDasharray: '390',
+                          strokeDashoffset: 0,
+                          strokeWidth: 4,
+                          strokeOpacity: 0.8,
+                          rotate: 360,
+                        } : convergeStatus === 'passed' ? {
+                          stroke: '#00FF66',
+                          strokeDasharray: '390',
+                          strokeDashoffset: 0,
+                          strokeWidth: 2.5,
+                          strokeOpacity: 0.8,
+                          rotate: 0,
+                        } : convergeStatus === 'failed' ? {
+                          stroke: '#FF003C',
+                          strokeDasharray: '10 8',
+                          strokeDashoffset: [0, 200],
+                          strokeWidth: 2.5,
+                          strokeOpacity: 0.9,
+                        } : { // active
+                          stroke: '#00FF66',
+                          strokeDasharray: '100 100',
+                          strokeDashoffset: [0, 360],
+                          strokeWidth: 2,
+                          strokeOpacity: 0.6,
+                        }}
+                        transition={allPassed ? {
+                          rotate: { type: 'spring', stiffness: 180, damping: 15 },
+                          default: { duration: 0.6 }
+                        } : convergeStatus === 'active' ? {
+                          strokeDashoffset: { repeat: Infinity, duration: 4, ease: 'linear' }
+                        } : convergeStatus === 'failed' ? {
+                          strokeDashoffset: { repeat: Infinity, duration: 10, ease: 'linear' }
+                        } : { duration: 0.5 }}
+                        style={{ originX: '128px', originY: '128px', transformOrigin: '128px 128px' }}
+                        filter={allPassed ? 'url(#emerald-glow)' : convergeStatus === 'active' ? 'url(#emerald-glow)' : undefined}
+                      />
+                    )}
+                  </svg>
+
+                  {/* Core Lock State icon */}
+                  <motion.div
+                    animate={allPassed ? {
+                      scale: [1, 1.25, 0.95, 1],
+                      borderColor: '#00FF66',
+                      boxShadow: '0 0 25px rgba(0, 255, 102, 0.45)',
+                    } : isFailed ? {
+                      scale: 1,
+                      rotate: [0, 10, -10, 0],
+                      borderColor: '#FF003C',
+                      boxShadow: '0 0 15px rgba(255, 0, 60, 0.25)',
+                    } : {
+                      scale: 1,
+                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                      boxShadow: '0 0 0px rgba(0,0,0,0)',
+                    }}
+                    transition={allPassed ? {
+                      scale: { duration: 0.45, ease: 'easeOut' },
+                      default: { duration: 0.3 }
+                    } : { duration: 0.3 }}
+                    className={`absolute flex flex-col items-center justify-center p-4 rounded-none bg-black border ${
+                      allPassed ? 'border-matrix-emerald' : isFailed ? 'border-laser-red' : 'border-white/10'
+                    }`}
+                  >
+                    {allPassed ? (
+                      <CheckCircle2 className="w-8 h-8 text-matrix-emerald animate-pulse" />
+                    ) : isFailed ? (
+                      <AlertTriangle className="w-8 h-8 text-laser-red animate-bounce" style={{ animationDuration: '2s' }} />
+                    ) : isRunning ? (
+                      <Activity className="w-8 h-8 text-electric-cyan animate-spin" style={{ animationDuration: '3s' }} />
+                    ) : (
+                      <Lock className="w-8 h-8 text-white/30" />
+                    )}
+                  </motion.div>
+                </div>
+
+                {/* Validation Checklist UI representation */}
+                <div className="w-full space-y-2 border-t border-white/10 pt-4.5 font-mono text-[11px]">
+                  <div className="flex items-center justify-between text-white/60 font-medium">
+                    <span className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 ${
+                        sekedStatus === 'passed' ? 'bg-matrix-emerald' : 
+                        sekedStatus === 'failed' ? 'bg-laser-red' : 
+                        sekedStatus === 'active' ? 'bg-electric-cyan animate-pulse' : 'bg-white/10'
+                      }`} /> 
+                      1. SEKED ENCLAVEMENT Check
+                    </span>
+                    <strong className={
+                      sekedStatus === 'passed' ? 'text-matrix-emerald font-bold' : 
+                      sekedStatus === 'failed' ? 'text-laser-red font-bold' : 
+                      sekedStatus === 'active' ? 'text-electric-cyan animate-pulse font-bold' : 'text-white/20'
+                    }>
+                      {sekedStatus === 'passed' ? 'PASSED' : sekedStatus === 'failed' ? 'REVOKED' : sekedStatus === 'active' ? 'EVALUATING' : 'PENDING'}
+                    </strong>
+                  </div>
+
+                  <div className="flex items-center justify-between text-white/60 font-medium">
+                    <span className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 ${
+                        arbiterStatus === 'passed' ? 'bg-matrix-emerald' : 
+                        arbiterStatus === 'failed' ? 'bg-laser-red' : 
+                        arbiterStatus === 'active' ? 'bg-hazard-amber animate-pulse' : 'bg-white/10'
+                      }`} />
+                      2. ArbiterOS Policy Match
+                    </span>
+                    <strong className={
+                      arbiterStatus === 'passed' ? 'text-matrix-emerald font-bold' : 
+                      arbiterStatus === 'failed' ? 'text-laser-red font-bold' : 
+                      arbiterStatus === 'active' ? 'text-hazard-amber animate-pulse font-bold' : 'text-white/20'
+                    }>
+                      {arbiterStatus === 'passed' ? 'PASSED' : arbiterStatus === 'failed' ? 'VIOLATED' : arbiterStatus === 'active' ? 'EVALUATING' : 'PENDING'}
+                    </strong>
+                  </div>
+
+                  <div className="flex items-center justify-between text-white/60 font-medium">
+                    <span className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 ${
+                        convergeStatus === 'passed' ? 'bg-matrix-emerald' : 
+                        convergeStatus === 'failed' ? 'bg-laser-red' : 
+                        convergeStatus === 'active' ? 'bg-matrix-emerald animate-pulse' : 'bg-white/10'
+                      }`} />
+                      3. ConvergeOS State Seal
+                    </span>
+                    <strong className={
+                      convergeStatus === 'passed' ? 'text-matrix-emerald font-bold' : 
+                      convergeStatus === 'failed' ? 'text-laser-red font-bold' : 
+                      convergeStatus === 'active' ? 'text-matrix-emerald animate-pulse font-bold' : 'text-white/20'
+                    }>
+                      {convergeStatus === 'passed' ? 'SEALED' : convergeStatus === 'failed' ? 'ABORTED' : convergeStatus === 'active' ? 'SEALING' : 'PENDING'}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="mt-4 p-2 bg-white/[0.01] border border-white/5 rounded-none w-full text-center text-[10px] text-white/40 uppercase font-black">
+                  {allPassed && <span className="text-matrix-emerald text-glow-emerald font-bold">● COUPLER SECURELY LOCKED</span>}
+                  {isFailed && <span className="text-laser-red text-glow-red font-bold">● COUPLER STATE ABORTED</span>}
+                  {isRunning && !allPassed && <span className="text-electric-cyan font-bold tracking-widest animate-pulse">● SECURING ENCLAVE LOCKS...</span>}
+                  {!isRunning && !isFailed && !allPassed && <span className="text-white/30 font-bold tracking-widest">● COUPLER STANDBY</span>}
+                </div>
+              </>
+            );
+          })()}
 
         </div>
 

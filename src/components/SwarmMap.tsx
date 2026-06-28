@@ -424,7 +424,7 @@ export default function SwarmMap({ agents, onAgentUpdate }: SwarmMapProps) {
                       stroke={agent.status === 'Blocked' ? '#FF003C' : '#00E5FF'}
                       strokeOpacity="0.25"
                       strokeWidth={isSelected ? "1.5" : "1"}
-                      className="animate-fast-pulse pointer-events-none"
+                      className="animate-fast-pulse pointer-events-none transition-all duration-500 ease-in-out"
                     />
                   )}
 
@@ -435,7 +435,7 @@ export default function SwarmMap({ agents, onAgentUpdate }: SwarmMapProps) {
                       y={agent.y - r - 24}
                       width={(r + 24) * 2}
                       height={(r + 24) * 2}
-                      className="pointer-events-none"
+                      className="pointer-events-none transition-all duration-500 ease-in-out"
                     >
                       <div className="w-full h-full flex items-center justify-center pointer-events-none">
                         <div
@@ -457,7 +457,7 @@ export default function SwarmMap({ agents, onAgentUpdate }: SwarmMapProps) {
                     fill={fillColor}
                     stroke={isSelected ? '#ffffff' : strokeColor}
                     strokeWidth={isSelected ? 2 : isLead ? 1.5 : 1}
-                    className="transition-colors duration-200"
+                    className="transition-all duration-500 ease-in-out"
                   />
 
                   {/* Quick hovering node tooltips (Native SVG Title fallback for lightweight telemetry access) */}

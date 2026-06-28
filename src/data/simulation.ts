@@ -256,6 +256,69 @@ class ControlPlaneSimulationStore {
     this.agents = generateSwarmAgents();
     this.runs = generateVeklomRuns(this.agents);
     this.seedLogs();
+    this.initSseConnection();
+  }
+
+  private initSseConnection() {
+    if (typeof window === 'undefined') return;
+
+    const connect = () => {
+      console.log("Connecting to UACP Swarm SSE endpoint...");
+      const source = new EventSource('/api/agent-updates');
+
+      source.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'connection') {
+            console.log(data.message);
+            return;
+          }
+
+          const agent = this.agents.find(a => a.id === data.id);
+          if (agent) {
+            const previousStatus = agent.status;
+            agent.status = data.status;
+            agent.metrics = {
+              ...agent.metrics,
+              ...data.metrics
+            };
+
+            if (previousStatus !== data.status) {
+              const timestamp = new Date(data.timestamp).toISOString().substring(11, 19);
+              agent.telemetryLogs.unshift(
+                `[${timestamp}] Real-time async transition: ${previousStatus} -> ${data.status}`
+              );
+              if (agent.telemetryLogs.length > 50) {
+                agent.telemetryLogs.pop();
+              }
+
+              if (Math.random() < 0.25) {
+                this.logs.unshift({
+                  timestamp: data.timestamp,
+                  source: 'MCP-IO',
+                  message: `RADAR: Async state synced: ${data.id} is now ${data.status.toUpperCase()}`,
+                  type: data.status === 'Blocked' ? 'warn' : 'info'
+                });
+                if (this.logs.length > 100) this.logs.pop();
+              }
+            }
+
+            this.notify();
+          }
+        } catch (err) {
+          console.error("SSE parse error", err);
+        }
+      };
+
+      source.onerror = (err) => {
+        console.warn("SSE disconnected. Reconnecting in 3s...", err);
+        source.close();
+        setTimeout(connect, 3000);
+      };
+    };
+
+    connect();
   }
 
   private seedLogs() {
