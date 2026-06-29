@@ -1,0 +1,557 @@
+Index: src/App.tsx
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>/**\r\n * @license\r\n * SPDX-License-Identifier: Apache-2.0\r\n */\r\n\r\nimport React, { useState, useEffect } from 'react';\r\nimport { AgentNode, VeklomRun, Delegate, TelemetryTick } from './types';\r\nimport Sidebar from './components/Sidebar';\r\nimport SwarmMap from './components/SwarmMap';\r\nimport RunSpine from './components/RunSpine';\r\nimport CouncilMatrix from './components/CouncilMatrix';\r\nimport DataGrid from './components/DataGrid';\r\nimport LiveTelemetry from './components/LiveTelemetry';\r\nimport QuantumTerminal from './components/QuantumTerminal';\r\nimport GenomeLedgerOnboarding from './components/GenomeLedgerOnboarding';\r\nimport IncidentsSlashing from './components/IncidentsSlashing';\r\nimport { Radio, Flame, Cpu, Gauge, AlertOctagon } from 'lucide-react';\r\nimport { controlStore } from './data/simulation';\r\n\r\nexport default function App() {\r\n  // Primary Navigation State\r\n  const [activeTab, setActiveTab] = useState<string>('terminal');\r\n\r\n  // Real-time ticking UTC clock for Geometric Balance theme\r\n  const [currentTime, setCurrentTime] = useState<string>('');\r\n\r\n  useEffect(() => {\r\n    const updateTime = () => {\r\n      const now = new Date();\r\n      const pad = (num: number) => String(num).padStart(2, '0');\r\n      setCurrentTime(`${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())} UTC`);\r\n    };\r\n    updateTime();\r\n    const interval = setInterval(updateTime, 1000);\r\n    return () => clearInterval(interval);\r\n  }, []);\r\n\r\n  // Local Reactive State mirroring our central control simulation store\r\n  const [agents, setAgents] = useState<AgentNode[]>(controlStore.agents);\r\n  const [runs, setRuns] = useState<VeklomRun[]>(controlStore.runs);\r\n  const [delegates, setDelegates] = useState<Delegate[]>(controlStore.delegates);\r\n  const [logs, setLogs] = useState<TelemetryTick[]>(controlStore.logs);\r\n  const [liveMetrics, setLiveMetrics] = useState(controlStore.liveMetrics);\r\n  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);\r\n\r\n  // Future integration point:\r\n  useEffect(() => {\r\n    return controlStore.subscribe(() => {\r\n      setAgents([...controlStore.agents]);\r\n      setRuns([...controlStore.runs]);\r\n      setDelegates([...controlStore.delegates]);\r\n      setLogs([...controlStore.logs]);\r\n      setLiveMetrics({ ...controlStore.liveMetrics });\r\n    });\r\n  }, []);\r\n\r\n  // Update a single agent properties (Reboot / Diagnostics actions)\r\n  const handleAgentUpdate = (id: string, updatedFields: Partial<AgentNode>) => {\r\n    setAgents(prev => prev.map(a => a.id === id ? { ...a, ...updatedFields } : a));\r\n  };\r\n\r\n  // Propose standard motion on the Legislative Matrix\r\n  const handleVotePropose = (proposalName: string) => {\r\n    setLogs(prev => [{\r\n      timestamp: new Date().toISOString(),\r\n      source: 'Council',\r\n      message: `LEGISLATURE: Motion initiated for ${proposalName}. Transmitting to backend for validation.`,\r\n      type: 'warn'\r\n    }, ...prev]);\r\n  };\r\n\r\n  // Handle high priority manual execution injection\r\n  const handleTriggerManualOverride = async (intentText: string, policyText: string) => {\r\n    // Empty state fallback - just log it for now\r\n    setLogs(prev => [{\r\n      timestamp: new Date().toISOString(),\r\n      source: 'Operator',\r\n      message: `MANUAL OVERRIDE: ${intentText}`,\r\n      type: 'warn'\r\n    }, ...prev]);\r\n  };\r\n\r\n  return (\r\n    <div className=\"w-screen h-screen bg-[#030303] text-white/90 overflow-hidden flex flex-col font-sans border-4 border-[#0A0A0C] relative\">\r\n      \r\n      {/* 1. Futuristic Scanline CRT overlay for cinematic feel */}\r\n      <div className=\"absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-electric-cyan/2 w-full animate-scanline pointer-events-none z-50\" />\r\n      \r\n      {/* Top Navigation Bar */}\r\n      <header className=\"h-12 border-b border-white/10 flex items-center justify-between px-4 bg-black/40 backdrop-blur-md z-50 shrink-0 select-none\">\r\n        <div className=\"flex items-center gap-6\">\r\n          <div className=\"flex items-center gap-2\">\r\n            <div className=\"w-3 h-3 bg-[#00E5FF] shadow-[0_0_8px_#00E5FF]\"></div>\r\n            <span className=\"text-xs font-bold tracking-[0.2em] uppercase\">UACP v5 Control Plane</span>\r\n          </div>\r\n          <div className=\"h-4 w-px bg-white/20\"></div>\r\n          <div className=\"flex items-center gap-4 font-mono text-[10px] text-white/50 bg-black/50 px-2 py-1 rounded border border-white/10\">\r\n            <span className=\"text-white/30\">CAPI_NODE:</span>\r\n            <select \r\n              className=\"bg-transparent text-white/80 outline-none cursor-pointer hover:text-white transition-colors\"\r\n              onChange={(e) => {\r\n                import('./data/pglLoader').then(m => m.setCapiBaseUrl(e.target.value));\r\n              }}\r\n              defaultValue=\"https://api.veklom.com\"\r\n            >\r\n              <option value=\"https://api.veklom.com\" className=\"bg-black text-white\">Backend Core 1 (api.veklom.com)</option>\r\n              <option value=\"https://cappo.veklom.com\" className=\"bg-black text-white\">Backend Core 2 (cappo-backend)</option>\r\n              <option value=\"https://veklom-id-59uw.vercel.app\" className=\"bg-black text-white\">Edge Instance 1 (veklom-id)</option>\r\n              <option value=\"https://mcpapi.vercel.app\" className=\"bg-black text-white\">Edge Instance 2 (mcpapi)</option>\r\n            </select>\r\n            <div className=\"w-px h-3 bg-white/20\"></div>\r\n            <span>LATENCY: 4MS</span>\r\n            <span className=\"text-[#00FF66]\">OS_HEALTH: 100%</span>\r\n          </div>\r\n        </div>\r\n        <div className=\"flex items-center gap-6\">\r\n          <div className=\"flex items-center gap-4\">\r\n            <div className=\"text-right\">\r\n              <div className=\"text-[9px] text-white/40 leading-none uppercase\">ARBITEROS STATUS</div>\r\n              <div className=\"text-[10px] font-mono text-[#00FF66] uppercase\">ENFORCING / MODE_01</div>\r\n            </div>\r\n            <div className=\"w-24 h-1.5 bg-white/10 overflow-hidden\">\r\n              <div className=\"w-3/4 h-full bg-[#00FF66] shadow-[0_0_4px_#00FF66]\"></div>\r\n            </div>\r\n          </div>\r\n          <div className=\"text-xs font-mono tabular-nums text-white/70\">{currentTime}</div>\r\n          <div className=\"ml-4\">\r\n            {/* @ts-expect-error - Web Component typing */}\r\n            <appkit-button />\r\n          </div>\r\n        </div>\r\n      </header>\r\n\r\n      {/* Main Content Split Frame */}\r\n      <div className=\"flex-grow flex overflow-hidden relative\">\r\n        {/* 2. Primary Navigation Sidebar */}\r\n        <Sidebar\r\n          activeTab={activeTab}\r\n          setActiveTab={setActiveTab}\r\n          mcpHeartbeat={liveMetrics.mcpIOHeartbeat}\r\n          throughput={liveMetrics.throughput}\r\n          agentsCount={agents.length}\r\n        />\r\n\r\n        {/* 3. Central Application Viewport */}\r\n        <main className=\"flex-grow flex flex-col justify-between overflow-y-auto overflow-x-hidden relative min-w-0 border-l border-white/5\">\r\n          \r\n          {/* VIEW CONTAINER */}\r\n          <div className=\"flex-grow overflow-y-auto overflow-x-hidden relative bg-[#030303]\">\r\n            {activeTab === 'overview' && (\r\n              <SwarmMap \r\n                agents={agents} \r\n                onAgentUpdate={handleAgentUpdate}\r\n              />\r\n            )}\r\n\r\n            {activeTab === 'terminal' && (\r\n              <QuantumTerminal />\r\n            )}\r\n\r\n            {activeTab === 'spine' && (\r\n              <RunSpine \r\n                runs={runs}\r\n                selectedRunId={selectedRunId}\r\n                onSelectRun={setSelectedRunId}\r\n              />\r\n            )}\r\n\r\n            {activeTab === 'runs' && (\r\n              <IncidentsSlashing />\r\n            )}\r\n\r\n            {activeTab === 'id' && (\r\n              <GenomeLedgerOnboarding />\r\n            )}\r\n\r\n            {activeTab === 'committee' && (\r\n              <CouncilMatrix \r\n                delegates={delegates}\r\n                onVotePropose={handleVotePropose}\r\n              />\r\n            )}\r\n\r\n            {(['playground', 'runtime', 'nexus', 'staking', 'duel', 'discovery', 'covenant', 'treasury'].includes(activeTab)) && (\r\n              <div className=\"w-full h-full flex flex-col items-center justify-center bg-[#030303] text-white/20 font-mono gap-4\">\r\n                <div className=\"w-16 h-16 rounded-full border border-dashed border-white/10 flex items-center justify-center animate-pulse\">\r\n                  <Cpu size={32} />\r\n                </div>\r\n                <div className=\"text-center\">\r\n                  <h3 className=\"text-sm font-bold uppercase tracking-widest text-white/40 mb-1\">Module Initializing</h3>\r\n                  <p className=\"text-[10px] uppercase\">Secure connection to {activeTab.toUpperCase()}_NODE pending...</p>\r\n                </div>\r\n              </div>\r\n            )}\r\n          </div>\r\n\r\n          {/* 4. Live Telemetry Console Ticker */}\r\n          <div className=\"h-72 border-t border-white/[0.05] bg-[#030303] shrink-0 relative z-10 select-none\">\r\n            <LiveTelemetry\r\n              logs={logs}\r\n              metrics={liveMetrics}\r\n              onTriggerManualOverride={handleTriggerManualOverride}\r\n            />\r\n          </div>\r\n\r\n        </main>\r\n      </div>\r\n\r\n      {/* System Footer Bar */}\r\n      <footer className=\"h-6 border-t border-white/10 bg-black flex items-center justify-between px-4 text-[9px] font-mono text-white/30 shrink-0 select-none\">\r\n        <div className=\"flex gap-4\">\r\n          <span>ENCRYPT: TLS_1.3_CHACHA20_POLY1305</span>\r\n          <span>SESSION: B82-ALPHA-77</span>\r\n        </div>\r\n        <div className=\"flex gap-4\">\r\n          <span className=\"text-[#00FF66]\">● UACP_CORE_UP</span>\r\n          <span className=\"text-[#00E5FF]\">● MCP_BUS_CONNECTED</span>\r\n        </div>\r\n      </footer>\r\n\r\n    </div>\r\n  );\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/App.tsx b/src/App.tsx
+--- a/src/App.tsx	(revision dc59df07047fd95c74e89f973064282f76363046)
++++ b/src/App.tsx	(date 1782479542704)
+@@ -14,8 +14,7 @@
+ import QuantumTerminal from './components/QuantumTerminal';
+ import GenomeLedgerOnboarding from './components/GenomeLedgerOnboarding';
+ import IncidentsSlashing from './components/IncidentsSlashing';
+-import { Radio, Flame, Cpu, Gauge, AlertOctagon } from 'lucide-react';
+-import { controlStore } from './data/simulation';
++import { AmphotericRuntimeControl } from './components/AmphotericRuntimeControl';
+ 
+ export default function App() {
+   // Primary Navigation State
+@@ -103,10 +102,11 @@
+               }}
+               defaultValue="https://api.veklom.com"
+             >
+-              <option value="https://api.veklom.com" className="bg-black text-white">Backend Core 1 (api.veklom.com)</option>
+-              <option value="https://cappo.veklom.com" className="bg-black text-white">Backend Core 2 (cappo-backend)</option>
+-              <option value="https://veklom-id-59uw.vercel.app" className="bg-black text-white">Edge Instance 1 (veklom-id)</option>
+-              <option value="https://mcpapi.vercel.app" className="bg-black text-white">Edge Instance 2 (mcpapi)</option>
++              <option value="https://api.veklom.com" className="bg-black text-white">Veklom Cloud (api.veklom.com)</option>
++              <option value="http://localhost:8088" className="bg-black text-white">Veklom Local (8088)</option>
++              <option value="http://localhost:8080" className="bg-black text-white">Interlink Rust (8080)</option>
++              <option value="https://cappo.veklom.com" className="bg-black text-white">CAPPO Cloud (cappo-backend)</option>
++              <option value="http://localhost:8001" className="bg-black text-white">CAPPO Local (8001)</option>
+             </select>
+             <div className="w-px h-3 bg-white/20"></div>
+             <span>LATENCY: 4MS</span>
+@@ -158,12 +158,8 @@
+               <QuantumTerminal />
+             )}
+ 
+-            {activeTab === 'spine' && (
+-              <RunSpine 
+-                runs={runs}
+-                selectedRunId={selectedRunId}
+-                onSelectRun={setSelectedRunId}
+-              />
++            {activeTab === 'runtime' && (
++              <AmphotericRuntimeControl />
+             )}
+ 
+             {activeTab === 'runs' && (
+Index: src/components/AmphotericRuntimeControl.tsx
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/components/AmphotericRuntimeControl.tsx b/src/components/AmphotericRuntimeControl.tsx
+new file mode 100644
+--- /dev/null	(date 1782479469604)
++++ b/src/components/AmphotericRuntimeControl.tsx	(date 1782479469604)
+@@ -0,0 +1,376 @@
++import React, { useState, useEffect } from 'react';
++import { motion, AnimatePresence } from 'motion/react';
++import {
++  ShieldCheck,
++  Terminal,
++  Zap,
++  Search,
++  Play,
++  Activity,
++  Shield,
++  Lock,
++  RefreshCw,
++  AlertOctagon,
++  Cpu
++} from 'lucide-react';
++import { API_BASE_URL } from '../data/pglLoader';
++
++interface Capability {
++  id: string;
++  title: string;
++  description: string;
++  risk: string;
++  toolset: string;
++  input_schema?: any;
++}
++
++export const AmphotericRuntimeControl: React.FC = () => {
++  const [capabilities, setCapabilities] = useState<Capability[]>([]);
++  const [selectedCap, setSelectedCap] = useState<Capability | null>(null);
++  const [args, setArgs] = useState<string>('{}');
++  const [result, setResult] = useState<any>(null);
++  const [loading, setLoading] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++  const [discoveryStatus, setDiscoveryStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
++
++  const fetchDiscovery = async () => {
++    setDiscoveryStatus('loading');
++    setError(null);
++    try {
++      // Standard discovery endpoint for VNP v2 / Amphoteric
++      let url = `${API_BASE_URL}/api/amphoteric/discover`;
++
++      // Fallback for Interlink Rust specific path if needed
++      if (API_BASE_URL.includes(':8080')) {
++          url = `${API_BASE_URL}/mcp/rpc`; // Discovery via RPC call
++      }
++
++      const res = await fetch(url, {
++          headers: { 'Accept': 'application/json' }
++      });
++
++      if (!res.ok) throw new Error(`Discovery failed: ${res.status}`);
++
++      const data = await res.json();
++
++      // Normalize different backend response formats
++      let normalized: Capability[] = [];
++      if (data.tools) {
++          normalized = data.tools.map((t: any) => ({
++              id: t.name || t.id,
++              title: t.name || t.title,
++              description: t.description,
++              risk: t.risk || 'Low',
++              toolset: t.toolset || 'general',
++              input_schema: t.parameters || t.inputSchema || t.input_schema
++          }));
++      } else if (data.result?.tools) {
++          normalized = data.result.tools.map((t: any) => ({
++              id: t.name || t.id,
++              title: t.name || t.title,
++              description: t.description,
++              risk: t.risk || 'Low',
++              toolset: t.toolset || 'general',
++              input_schema: t.inputSchema || t.input_schema
++          }));
++      } else if (data.capabilities) {
++          normalized = data.capabilities;
++      }
++
++      setCapabilities(normalized);
++      setDiscoveryStatus('success');
++    } catch (e: any) {
++      console.error(e);
++      setDiscoveryStatus('error');
++      setError(e.message);
++    }
++  };
++
++  useEffect(() => {
++    fetchDiscovery();
++  }, [API_BASE_URL]);
++
++  const handleInvoke = async () => {
++    if (!selectedCap) return;
++    setLoading(true);
++    setError(null);
++    setResult(null);
++
++    try {
++      const parsedArgs = JSON.parse(args);
++      let url = `${API_BASE_URL}/api/amphoteric/call`;
++      let body: any = { name: selectedCap.id, arguments: parsedArgs };
++
++      // Handle VNP v2 / Interlink specific paths
++      if (API_BASE_URL.includes(':8080')) {
++          url = `${API_BASE_URL}/api/v2/invoke`;
++          body = {
++              capability_id: selectedCap.id,
++              arguments: parsedArgs,
++              context: {
++                  tenant_id: "demo-tenant",
++                  actor_id: "human-operator",
++                  transport: "Http",
++                  trace_id: `trace-${Math.random().toString(36).substring(7)}`,
++                  environment: "prod",
++                  is_untrusted_content: false,
++                  enabled_toolsets: [selectedCap.toolset],
++                  approval_status: null
++              }
++          };
++      }
++
++      const res = await fetch(url, {
++        method: 'POST',
++        headers: {
++            'Content-Type': 'application/json',
++            'Authorization': 'Bearer local-demo-token'
++        },
++        body: JSON.stringify(body),
++      });
++
++      const data = await res.json();
++      if (!res.ok) throw new Error(data.detail?.message || data.error || 'Execution failed');
++      setResult(data);
++    } catch (e: any) {
++      setError(e.message);
++    } finally {
++      setLoading(false);
++    }
++  };
++
++  return (
++    <div className="flex flex-col gap-6 p-6 h-full bg-black/20 backdrop-blur-xl">
++      {/* Header */}
++      <div className="flex items-center justify-between">
++        <div className="flex items-center gap-3">
++          <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
++            <ShieldCheck className="w-6 h-6 text-emerald-400" />
++          </div>
++          <div>
++            <h1 className="text-xl font-bold tracking-tight text-white">Amphoteric Runtime Enforcement</h1>
++            <p className="text-xs text-white/40 uppercase tracking-widest font-mono">
++              Connected to: <span className="text-emerald-400">{API_BASE_URL}</span>
++            </p>
++          </div>
++        </div>
++        <button
++          onClick={fetchDiscovery}
++          className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-medium hover:bg-white/10 transition-colors"
++        >
++          <RefreshCw className={`w-3.5 h-3.5 ${discoveryStatus === 'loading' ? 'animate-spin' : ''}`} />
++          Refresh Discovery
++        </button>
++      </div>
++
++      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow min-h-0">
++        {/* Capability Catalog */}
++        <div className="flex flex-col gap-4 bg-white/5 border border-white/10 rounded-2xl p-4 overflow-hidden">
++          <div className="flex items-center justify-between px-2">
++            <h2 className="text-xs font-bold uppercase tracking-widest text-white/60">Capability Catalog</h2>
++            <span className="text-[10px] font-mono text-white/30">{capabilities.length} Primitives</span>
++          </div>
++
++          <div className="flex-grow overflow-y-auto space-y-2 pr-2 scrollbar-hide">
++            {discoveryStatus === 'loading' && (
++                <div className="flex flex-col items-center justify-center h-32 gap-3">
++                    <Activity className="w-6 h-6 text-white/20 animate-pulse" />
++                    <span className="text-[10px] uppercase text-white/20 font-mono">Synchronizing Registry...</span>
++                </div>
++            )}
++
++            {discoveryStatus === 'error' && (
++                <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/20">
++                    <div className="flex items-center gap-2 text-red-400 mb-1">
++                        <AlertOctagon size={14} />
++                        <span className="text-[10px] font-bold uppercase">Discovery Failed</span>
++                    </div>
++                    <p className="text-[10px] text-red-400/60 font-mono leading-relaxed">{error}</p>
++                </div>
++            )}
++
++            {capabilities.map((cap) => (
++              <button
++                key={cap.id}
++                onClick={() => setSelectedCap(cap)}
++                className={`w-full flex flex-col p-4 rounded-xl border transition-all text-left group ${
++                  selectedCap?.id === cap.id
++                    ? 'bg-emerald-500/10 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.1)]'
++                    : 'bg-black/40 border-white/5 hover:border-white/10'
++                }`}
++              >
++                <div className="flex items-center justify-between w-full mb-1">
++                  <span className={`text-sm font-bold ${selectedCap?.id === cap.id ? 'text-emerald-400' : 'text-white/80 group-hover:text-white'}`}>
++                    {cap.title}
++                  </span>
++                  <div className={`px-1.5 py-0.5 rounded text-[8px] font-mono uppercase border ${
++                      cap.risk === 'Critical' ? 'bg-red-500/20 border-red-500/30 text-red-400' :
++                      cap.risk === 'High' ? 'bg-orange-500/20 border-orange-500/30 text-orange-400' :
++                      'bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
++                  }`}>
++                    {cap.risk}
++                  </div>
++                </div>
++                <p className="text-[10px] text-white/40 line-clamp-2 leading-relaxed font-mono">
++                  {cap.description}
++                </p>
++                <div className="mt-3 flex items-center gap-3">
++                    <span className="text-[9px] font-mono text-white/20 uppercase tracking-tighter">ID: {cap.id}</span>
++                    <span className="text-[9px] font-mono text-white/20 uppercase tracking-tighter">SET: {cap.toolset}</span>
++                </div>
++              </button>
++            ))}
++          </div>
++        </div>
++
++        {/* Invocation Surface */}
++        <div className="lg:col-span-2 flex flex-col gap-6 overflow-hidden">
++          <AnimatePresence mode="wait">
++            {selectedCap ? (
++              <motion.div
++                key={selectedCap.id}
++                initial={{ opacity: 0, y: 10 }}
++                animate={{ opacity: 1, y: 0 }}
++                exit={{ opacity: 0, y: -10 }}
++                className="flex flex-col gap-6 h-full"
++              >
++                {/* Parameter Synthesis */}
++                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col gap-4">
++                  <div className="flex items-center gap-2 mb-2">
++                    <Cpu className="w-4 h-4 text-emerald-400" />
++                    <h3 className="text-xs font-bold uppercase tracking-widest text-white/60">Execution Intent Parameter Synthesis</h3>
++                  </div>
++
++                  <div className="space-y-4">
++                    <div className="flex flex-col gap-2">
++                      <div className="flex justify-between items-center px-1">
++                        <label className="text-[10px] text-white/30 uppercase font-mono">JSON Arguments (calldata)</label>
++                        {selectedCap.input_schema && (
++                            <span className="text-[9px] text-emerald-400/50 font-mono">Schema Validated</span>
++                        )}
++                      </div>
++                      <textarea
++                        value={args}
++                        onChange={(e) => setArgs(e.target.value)}
++                        className="w-full h-40 bg-black/60 border border-white/10 rounded-xl p-4 font-mono text-xs text-emerald-300 outline-none focus:border-emerald-500/50 transition-colors resize-none"
++                      />
++                    </div>
++
++                    <button
++                      onClick={handleInvoke}
++                      disabled={loading}
++                      className={`w-full flex items-center justify-center gap-3 py-3 rounded-xl font-bold text-xs tracking-[0.2em] uppercase transition-all ${
++                        loading
++                          ? 'bg-white/5 text-white/20 cursor-not-allowed'
++                          : 'bg-emerald-500 text-black hover:bg-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.2)]'
++                      }`}
++                    >
++                      {loading ? (
++                        <Activity className="w-4 h-4 animate-spin" />
++                      ) : (
++                        <>
++                          <Play className="w-3.5 h-3.5 fill-current" />
++                          Execute Governed Capability
++                        </>
++                      )}
++                    </button>
++                  </div>
++                </div>
++
++                {/* Evidence & Execution Trace */}
++                <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-6 min-h-0">
++                  {/* Results Panel */}
++                  <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col gap-4 overflow-hidden">
++                    <div className="flex items-center gap-2">
++                      <Terminal className="w-4 h-4 text-white/40" />
++                      <h3 className="text-xs font-bold uppercase tracking-widest text-white/60">Execution Trace</h3>
++                    </div>
++
++                    <div className="flex-grow overflow-auto bg-black/40 rounded-xl border border-white/5 p-4 font-mono">
++                      {result ? (
++                        <pre className="text-[10px] text-emerald-500/80 whitespace-pre-wrap leading-relaxed">
++                          {JSON.stringify(result, null, 2)}
++                        </pre>
++                      ) : error ? (
++                        <div className="flex flex-col gap-2 text-red-400">
++                          <div className="text-[10px] font-bold uppercase flex items-center gap-1">
++                            <AlertOctagon size={12} /> Execution Fault
++                          </div>
++                          <p className="text-[10px] leading-relaxed">{error}</p>
++                        </div>
++                      ) : (
++                        <div className="flex items-center justify-center h-full text-white/10 text-[10px] uppercase font-mono tracking-widest italic">
++                          Awaiting Execution Signal...
++                        </div>
++                      )}
++                    </div>
++                  </div>
++
++                  {/* PGL Evidence Panel */}
++                  <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col gap-4 overflow-hidden">
++                    <div className="flex items-center justify-between">
++                        <div className="flex items-center gap-2">
++                            <Shield className="w-4 h-4 text-emerald-400" />
++                            <h3 className="text-xs font-bold uppercase tracking-widest text-white/60">PGL Compliance Evidence</h3>
++                        </div>
++                        {result?.pgl_hash && (
++                            <span className="flex items-center gap-1.5 text-[8px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20">
++                                <Lock size={8} /> SEALED
++                            </span>
++                        )}
++                    </div>
++
++                    <div className="space-y-4 font-mono">
++                        <div className="p-3 bg-black/40 rounded-xl border border-white/5 space-y-2">
++                            <div className="flex justify-between text-[9px]">
++                                <span className="text-white/20 uppercase">Audit Reference:</span>
++                                <span className="text-emerald-400/70 truncate ml-2">
++                                    {result?.trace_id || result?.id || '—'}
++                                </span>
++                            </div>
++                            <div className="flex justify-between text-[9px]">
++                                <span className="text-white/20 uppercase">PGL Hash Chain:</span>
++                                <span className="text-emerald-400/70 truncate ml-2">
++                                    {result?.pgl_hash || '—'}
++                                </span>
++                            </div>
++                        </div>
++
++                        <div className="space-y-2">
++                            <div className="text-[9px] text-white/30 uppercase tracking-tighter px-1">Integrity Verification</div>
++                            <div className="space-y-1.5">
++                                {[
++                                    { name: 'Identity Proof', status: result ? 'PASSED' : 'PENDING' },
++                                    { name: 'Policy Consensus', status: result ? 'PASSED' : 'PENDING' },
++                                    { name: 'Sovereign Attestation', status: result?.pgl_hash ? 'PASSED' : 'PENDING' }
++                                ].map((step) => (
++                                    <div key={step.name} className="flex items-center justify-between p-2.5 rounded-lg bg-white/5 border border-white/5">
++                                        <span className="text-[10px] text-white/60">{step.name}</span>
++                                        <span className={`text-[9px] font-bold ${step.status === 'PASSED' ? 'text-emerald-400' : 'text-white/10'}`}>
++                                            [{step.status}]
++                                        </span>
++                                    </div>
++                                ))}
++                            </div>
++                        </div>
++                    </div>
++                  </div>
++                </div>
++              </motion.div>
++            ) : (
++              <div className="flex flex-col items-center justify-center h-full gap-4 text-center border-2 border-dashed border-white/5 rounded-3xl bg-white/[0.02]">
++                <div className="p-4 bg-white/5 rounded-full border border-white/10">
++                    <Search className="w-8 h-8 text-white/20" />
++                </div>
++                <div>
++                    <h3 className="text-sm font-bold text-white/40 uppercase tracking-widest">Awaiting Capability Selection</h3>
++                    <p className="text-[10px] text-white/20 font-mono mt-1">SELECT A PRIMITIVE FROM THE CATALOG TO BEGIN ENFORCEMENT</p>
++                </div>
++              </div>
++            )}
++          </AnimatePresence>
++        </div>
++      </div>
++    </div>
++  );
++};
+Index: src/components/AmphotericRuntimeControl.test.tsx
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/components/AmphotericRuntimeControl.test.tsx b/src/components/AmphotericRuntimeControl.test.tsx
+new file mode 100644
+--- /dev/null	(date 1782479709846)
++++ b/src/components/AmphotericRuntimeControl.test.tsx	(date 1782479709846)
+@@ -0,0 +1,21 @@
++import { render, screen } from '@testing-library/react';
++import { describe, it, expect, vi } from 'vitest';
++import { AmphotericRuntimeControl } from './AmphotericRuntimeControl';
++
++// Mock the pglLoader module
++vi.mock('../data/pglLoader', () => ({
++  API_BASE_URL: 'http://localhost:8080'
++}));
++
++describe('AmphotericRuntimeControl', () => {
++  it('renders discovery status', () => {
++    render(<AmphotericRuntimeControl />);
++    expect(screen.getByText(/Amphoteric Runtime Enforcement/i)).toBeDefined();
++    expect(screen.getByText(/http:\/\/localhost:8080/i)).toBeDefined();
++  });
++
++  it('shows empty catalog initially', () => {
++    render(<AmphotericRuntimeControl />);
++    expect(screen.getByText(/0 Primitives/i)).toBeDefined();
++  });
++});
+Index: src/data/pglLoader.ts
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>export interface PGLAgent {\r\n  agent: string;\r\n  pgl_id: string;\r\n  run_id: string;\r\n  status: string;\r\n}\r\n\r\n// Fallback registry for safety/dev if network fails\r\nimport fallbackRegistry from './veklom-agents/master-agent-army/pgl_registry.json';\r\n\r\n// Toggles between live API vs Local Dev Backend based on VITE_ env vars\r\n// If you want to force local, set VITE_USE_LOCAL_BACKEND=true in .env\r\nexport let API_BASE_URL = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true' \r\n  ? 'http://localhost:8000' \r\n  : 'https://api.veklom.com';\r\n\r\nconst CAPPO_BASE_URL = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true'\r\n  ? 'http://localhost:8001'\r\n  : 'https://api.cappo.veklom.com';\r\nexport const setCapiBaseUrl = (url: string) => {\r\n  API_BASE_URL = url;\r\n};\r\n\r\nconst CAPPO_BASE_URL = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true'\r\n  ? 'http://localhost:8001'\r\n  : 'https://api.cappo.veklom.com';\r\n\r\nexport const establishBackendHandshake = async (): Promise<PGLAgent[]> => {\r\n  try {\r\n    const response = await fetch(`${API_BASE_URL}/api/v1/pgl/registry`, {\r\n      method: 'GET',\r\n      headers: {\r\n        'Accept': 'application/json',\r\n      },\r\n    });\r\n\r\n    if (!response.ok) {\r\n      throw new Error(`Handshake failed with status ${response.status}`);\r\n    }\r\n\r\n    const data = await response.json();\r\n    return data as PGLAgent[];\r\n  } catch (error) {\r\n    console.error('[HANDSHAKE ERROR] Failed to connect to backend PGL Registry. Falling back to local offline registry.', error);\r\n    return fallbackRegistry as PGLAgent[];\r\n  }\r\n};\r\n\r\nexport interface ExecutionReceipt {\r\n  status: string;\r\n  intent_hash: string;\r\n  verdict: string;\r\n  evidence_chain_id: string;\r\n  result?: any;\r\n}\r\n\r\nimport { modal, config } from '../config/wagmi';\r\nimport { getAccount, sendTransaction } from '@wagmi/core';\r\nimport { parseEther } from 'viem';\r\n\r\nexport const triggerCAPIExecution = async (\r\n  agent_id: string,\r\n  pgl_id: string,\r\n  target_protocol: string,\r\n  action: string,\r\n  payload: any\r\n): Promise<ExecutionReceipt> => {\r\n  const intent = {\r\n    agent_id,\r\n    pgl_id,\r\n    target_protocol,\r\n    action,\r\n    payload\r\n  };\r\n\r\n  const generateHash = (prefix: string) => {\r\n    return `${prefix}_${Math.random().toString(36).substring(2, 10)}`;\r\n  };\r\n  const traceId = generateHash('trx');\r\n\r\n  const headers: any = {\r\n    'Content-Type': 'application/json',\r\n    'Accept': 'application/json',\r\n    'X-Veklom-Origin-Node': API_BASE_URL,\r\n    'X-Veklom-Trace-Id': traceId,\r\n    'X-Veklom-Timestamp': Date.now().toString(),\r\n    'X-Veklom-Audit-Sig': generateHash('sig')\r\n  };\r\n\r\n  let response = await fetch(`${API_BASE_URL}/api/v1/capi/execute`, {\r\n    method: 'POST',\r\n    headers,\r\n    body: JSON.stringify(intent)\r\n  });\r\n\r\n  // x402 Interceptor Logic\r\n  if (response.status === 402) {\r\n    const prHeader = response.headers.get('payment-required');\r\n    if (prHeader) {\r\n      try {\r\n        const decoded = JSON.parse(atob(prHeader));\r\n        console.log('[x402] Payment Required:', decoded);\r\n        \r\n        const account = getAccount(config);\r\n        if (!account.isConnected) {\r\n          await modal.open();\r\n          // Poll until wallet is connected\r\n          await new Promise<void>((resolve) => {\r\n            const interval = setInterval(() => {\r\n              if (getAccount(config).isConnected) {\r\n                clearInterval(interval);\r\n                resolve();\r\n              }\r\n            }, 1000);\r\n          });\r\n        }\r\n        \r\n        // At this point, the user is connected via Reown AppKit!\r\n        const connectedAccount = getAccount(config);\r\n        headers['X-Wallet-Address'] = connectedAccount.address;\r\n        \r\n        // For standard x402, we would send the on-chain tx here and attach the receipt.\r\n        // For demo purposes and immediate verification of the real modal:\r\n        alert(`Wallet Connected: ${connectedAccount.address}\\n\\nx402 Challenge Received:\\nPrice: ${decoded.accepts[0]?.price}\\nPay To: ${decoded.accepts[0]?.payTo}`);\r\n        \r\n        // Re-attempt request with authenticated wallet header\r\n        response = await fetch(`${API_BASE_URL}/api/v1/capi/execute`, {\r\n          method: 'POST',\r\n          headers,\r\n          body: JSON.stringify(intent)\r\n        });\r\n      } catch (err) {\r\n        console.error('[x402] Failed to process payment challenge:', err);\r\n      }\r\n    }\r\n  }\r\n\r\n  if (!response.ok) {\r\n    const errorData = await response.json().catch(() => ({}));\r\n    throw new Error(errorData.detail?.message || `cAPI execution failed with status ${response.status}`);\r\n  }\r\n\r\n  const data = await response.json();\r\n  return data as ExecutionReceipt;\r\n};\r\n\r\nexport interface WorkspaceOverview {\r\n  workspace_id: string;\r\n  plan: string;\r\n  members_count: number;\r\n  models_enabled: number;\r\n  total_requests_today: number;\r\n  requests_per_min: number;\r\n  p50_latency_ms: number;\r\n  tokens_per_sec: number;\r\n  spend_today_usd: number;\r\n  spend_cap_usd: number;\r\n  spend_percent: number;\r\n  spend_status: string;\r\n  burn_rate_usd_per_min: number;\r\n  forecast_eod_usd: number;\r\n  budget_remaining_usd: number;\r\n  active_pipelines: number;\r\n  active_deployments: number;\r\n  active_models: number;\r\n  audit_entries: number;\r\n  recent_runs: Array<{\r\n    id: string;\r\n    model: string;\r\n    route: string;\r\n    latency: number;\r\n    tokens: number;\r\n    cost: number;\r\n    policy: string;\r\n    ts: string;\r\n  }>;\r\n  policy_events: Array<{\r\n    t: string;\r\n    title: string;\r\n    body: string;\r\n    tone: string;\r\n  }>;\r\n  alerts: Array<{\r\n    id: string;\r\n    title: string;\r\n    severity: string;\r\n    source: string;\r\n    time: string;\r\n  }>;\r\n  audit_logs: Array<{\r\n    id: string;\r\n    action: string;\r\n    target: string;\r\n    actor: string;\r\n    hash: string;\r\n    ts: string;\r\n  }>;\r\n  fleet: Array<{\r\n    id: string;\r\n    name: string;\r\n    quant: string;\r\n    replicas: number;\r\n    route: string;\r\n    p50: number;\r\n  }>;\r\n  routing: {\r\n    hetzner_percent: number;\r\n    aws_percent: number;\r\n    primary_region: string;\r\n    burst_region: string;\r\n    history: Array<{ t: string; hetzner: number; aws: number }>;\r\n    regions: Array<{ label: string; value: string; sub: string; route: string }>;\r\n  };\r\n  updated_at: string;\r\n}\r\n\r\nexport const fetchWorkspaceOverview = async (): Promise<WorkspaceOverview | null> => {\r\n  try {\r\n    const [veklomRes, cappoRes] = await Promise.allSettled([\r\n      fetch(`${API_BASE_URL}/api/v1/workspace/overview/live`, {\r\n        method: 'GET',\r\n        headers: { 'Accept': 'application/json' },\r\n      }),\r\n      fetch(`${CAPPO_BASE_URL}/api/v1/workspace/overview/live`, {\r\n        method: 'GET',\r\n        headers: { 'Accept': 'application/json' },\r\n      })\r\n    ]);\r\n\r\n    let veklomData: WorkspaceOverview | null = null;\r\n    let cappoData: WorkspaceOverview | null = null;\r\n\r\n    if (veklomRes.status === 'fulfilled' && veklomRes.value.ok) {\r\n      veklomData = await veklomRes.value.json() as WorkspaceOverview;\r\n    }\r\n    if (cappoRes.status === 'fulfilled' && cappoRes.value.ok) {\r\n      cappoData = await cappoRes.value.json() as WorkspaceOverview;\r\n      // Preemptively map cappo strings for distinct UI logs\r\n      if (cappoData.recent_runs) {\r\n        cappoData.recent_runs = cappoData.recent_runs.map(r => ({ ...r, route: 'CAPPO/' + r.route }));\r\n      }\r\n      if (cappoData.audit_logs) {\r\n        cappoData.audit_logs = cappoData.audit_logs.map(l => ({ ...l, target: 'CAPPO/' + l.target }));\r\n      }\r\n    }\r\n\r\n    if (!veklomData && !cappoData) {\r\n      throw new Error('Both backends failed to return overview data.');\r\n    }\r\n\r\n    if (veklomData && cappoData) {\r\n      // Merge data from both backends to give a unified view\r\n      // We'll prioritize Veklom as the base and add Cappo data into it.\r\n      const mergedData = { ...veklomData };\r\n      mergedData.total_requests_today = (veklomData.total_requests_today || 0) + (cappoData.total_requests_today || 0);\r\n      mergedData.tokens_per_sec = (veklomData.tokens_per_sec || 0) + (cappoData.tokens_per_sec || 0);\r\n      mergedData.active_models = (veklomData.active_models || 0) + (cappoData.active_models || 0);\r\n      mergedData.active_pipelines = (veklomData.active_pipelines || 0) + (cappoData.active_pipelines || 0);\r\n\r\n      // Merge arrays\r\n      mergedData.recent_runs = [...(veklomData.recent_runs || []), ...(cappoData.recent_runs || [])];\r\n      mergedData.audit_logs = [...(veklomData.audit_logs || []), ...(cappoData.audit_logs || [])];\r\n      mergedData.policy_events = [...(veklomData.policy_events || []), ...(cappoData.policy_events || [])];\r\n      mergedData.alerts = [...(veklomData.alerts || []), ...(cappoData.alerts || [])];\r\n\r\n      // Sort arrays by timestamp descending\r\n      mergedData.recent_runs.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());\r\n      mergedData.audit_logs.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());\r\n\r\n      return mergedData;\r\n    }\r\n\r\n    return veklomData || cappoData;\r\n\r\n  } catch (error) {\r\n    console.error('[OVERVIEW ERROR] Failed to fetch workspace overview from backends.', error);\r\n    return null;\r\n  }\r\n};\r\n\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/data/pglLoader.ts b/src/data/pglLoader.ts
+--- a/src/data/pglLoader.ts	(revision dc59df07047fd95c74e89f973064282f76363046)
++++ b/src/data/pglLoader.ts	(date 1782479377738)
+@@ -14,16 +14,17 @@
+   ? 'http://localhost:8000' 
+   : 'https://api.veklom.com';
+ 
+-const CAPPO_BASE_URL = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true'
++let CAPPO_BASE_URL = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true'
+   ? 'http://localhost:8001'
+   : 'https://api.cappo.veklom.com';
++
+ export const setCapiBaseUrl = (url: string) => {
+   API_BASE_URL = url;
++  // If it's a localhost URL, we might need to adjust CAPPO as well if they are on adjacent ports
++  if (url.includes('localhost:8088')) {
++     CAPPO_BASE_URL = 'http://localhost:8001'; // Standard CAPPO local
++  }
+ };
+-
+-const CAPPO_BASE_URL = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true'
+-  ? 'http://localhost:8001'
+-  : 'https://api.cappo.veklom.com';
+ 
+ export const establishBackendHandshake = async (): Promise<PGLAgent[]> => {
+   try {
+Index: src/components/QuantumTerminal.tsx
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import React, { useState, useEffect, useRef } from 'react';\r\nimport { motion, AnimatePresence } from 'motion/react';\r\nimport { SpectralAnalysis } from './SpectralAnalysis';\r\nimport { GovernanceMonitor } from './GovernanceMonitor';\r\nimport { ComplianceHorizon } from './ComplianceHorizon';\r\nimport { GenomeDNA } from './GenomeDNA';\r\nimport { LineageLedger } from './LineageLedger';\r\nimport { StatePropagationAtlas } from './StatePropagationAtlas';\r\nimport { ROIPanel } from './ROIPanel';\r\nimport { AgentTrustScore } from './AgentTrustScore';\r\n\r\nimport { BoundedScaling } from './BoundedScaling';\r\nimport { UACPLayers } from './UACPLayers';\r\nimport { SEKEDCompiler } from './SEKEDCompiler';\r\nimport { AgentConsensusMatrix } from './AgentConsensusMatrix';\r\nimport { ArchivesOfOrder } from './ArchivesOfOrder';\r\nimport { DeterminismRatio } from './DeterminismRatio';\r\nimport { EmissionsTrajectory } from './EmissionsTrajectory';\r\nimport { GovernanceRoadmap } from './GovernanceRoadmap';\r\nimport { IdentityGovernancePanel } from './IdentityGovernancePanel';\r\nimport { IntentConsole } from './IntentConsole';\r\nimport { MCPGateway } from './MCPGateway';\r\nimport { MemoryVault } from './MemoryVault';\r\nimport { MitigationPathwaysPanel } from './MitigationPathwaysPanel';\r\nimport { ObservabilitySignals } from './ObservabilitySignals';\r\nimport { PolicyEvaluationPanel } from './PolicyEvaluationPanel';\r\nimport { ProbabilityMatrix } from './ProbabilityMatrix';\r\nimport { RegionalEmittersPanel } from './RegionalEmittersPanel';\r\nimport { SignalIngestionFeed } from './SignalIngestionFeed';\r\nimport { AgentLatencyVisualizer } from './AgentLatencyVisualizer';\r\nimport { ThreatLandscape } from './ThreatLandscape';\r\nimport QuantumDashboard from './QuantumDashboard';\r\nimport { ToolExecutor } from './ToolExecutor';\r\nimport { LLMProvider, ProviderConfig, QuantumAgentStatus } from '../types';\r\n\r\ntype ViewType = 'terminal' | 'mesh' | 'tele' | 'paths' | 'engine' | 'hub' | 'trust' | 'dashboard' | 'tools' | 'climate' | 'security';\r\ntype LogType = 'sys' | 'pmt' | 'out' | 'ok' | 'warn' | 'err' | 'error' | 'dim' | 'pur' | 'hdr' | 'sep' | 'custom';\r\n\r\ninterface SpecPath {\r\n  l: string;\r\n  v: number;\r\n  locked?: boolean;\r\n  pruned?: boolean;\r\n  ok?: boolean;\r\n}\r\n\r\ninterface LogEntry {\r\n  id: string;\r\n  text: string;\r\n  type: LogType;\r\n  delay?: number;\r\n  isSpec?: boolean;\r\n  specPaths?: SpecPath[];\r\n  isMesh?: boolean;\r\n  meshLbl?: string;\r\n  isRaw?: boolean;\r\n}\r\n\r\ninterface TelemetryState {\r\n  zenoCycles: number;\r\n  pathsPruned: number;\r\n  eventLogs: { id: string; cls: string; text: string; time: string }[];\r\n}\r\n\r\nfunction ZenoCanvas({ zenoOn, zenoLabel }: { zenoOn: boolean; zenoLabel: string }) {\r\n  const canvasRef = useRef<HTMLCanvasElement>(null);\r\n\r\n  useEffect(() => {\r\n    const canvas = canvasRef.current;\r\n    if (!canvas) return;\r\n    const ctx = canvas.getContext('2d');\r\n    if (!ctx) return;\r\n\r\n    let animationId: number;\r\n    let zenoPhase = 0;\r\n\r\n    const resizeZ = () => {\r\n      const d = window.devicePixelRatio || 1;\r\n      canvas.width = canvas.offsetWidth * d;\r\n      canvas.height = 26 * d;\r\n      ctx.scale(d, d);\r\n    };\r\n    resizeZ();\r\n    window.addEventListener('resize', resizeZ);\r\n\r\n    const drawZ = () => {\r\n      const w = canvas.offsetWidth;\r\n      const h = 26;\r\n      ctx.clearRect(0, 0, w * 2, h * 2);\r\n      ctx.beginPath();\r\n      for (let x = 0; x < w; x++) {\r\n        const amp = zenoOn ? 7 : 2.5;\r\n        const fr = zenoOn ? 0.07 : 0.035;\r\n        const y = h / 2 + Math.sin(x * fr + zenoPhase) * amp + Math.sin(x * fr * 2.1 + zenoPhase * 1.6) * (amp * 0.35);\r\n        if (x === 0) ctx.moveTo(x, y);\r\n        else ctx.lineTo(x, y);\r\n      }\r\n      ctx.strokeStyle = zenoOn ? 'rgba(227,179,65,.75)' : 'rgba(99,179,237,.5)';\r\n      ctx.lineWidth = 1.5;\r\n      ctx.stroke();\r\n\r\n      if (zenoOn) {\r\n        for (let i = 0; i < 5; i++) {\r\n          const sx = (canvas.offsetWidth / 6) * (i + 1) + Math.sin(zenoPhase + i) * 4;\r\n          const sh = 6 + Math.abs(Math.sin(zenoPhase * 2 + i)) * 9;\r\n          ctx.beginPath();\r\n          ctx.moveTo(sx, h / 2);\r\n          ctx.lineTo(sx, h / 2 - sh);\r\n          ctx.strokeStyle = `rgba(188,140,255,${0.3 + Math.abs(Math.sin(zenoPhase + i)) * 0.5})`;\r\n          ctx.lineWidth = 1;\r\n          ctx.stroke();\r\n        }\r\n      }\r\n      zenoPhase += zenoOn ? 0.055 : 0.016;\r\n      animationId = requestAnimationFrame(drawZ);\r\n    };\r\n    drawZ();\r\n\r\n    return () => {\r\n      window.removeEventListener('resize', resizeZ);\r\n      cancelAnimationFrame(animationId);\r\n    };\r\n  }, [zenoOn]);\r\n\r\n  return (\r\n    <div className=\"zeno-strip\">\r\n      <div className=\"z-lbl\">Zeno</div>\r\n      <div className=\"z-wrap\"><canvas ref={canvasRef} id=\"zeno\"></canvas></div>\r\n      <div className={`z-state ${zenoOn ? 'on' : ''}`}>{zenoLabel}</div>\r\n    </div>\r\n  );\r\n}\r\n\r\nexport default function QuantumTerminal() {\r\n  const [activeView, setActiveView] = useState<ViewType>('dashboard');\r\n  const [inputVal, setInputVal] = useState('');\r\n  const [logs, setLogs] = useState<LogEntry[]>([]);\r\n  const [isTyping, setIsTyping] = useState(false);\r\n  const [zenoState, setZenoState] = useState({ on: false, lbl: 'PHASE_LOCKED' });\r\n  const [providers, setProviders] = useState<ProviderConfig[]>([\r\n    { id: 'google', name: 'Google (Gemini Pro)', enabled: true },\r\n    { id: 'openai', name: 'OpenAI (GPT-4o)', enabled: true },\r\n    { id: 'anthropic', name: 'Anthropic (Claude 3)', enabled: true },\r\n    { id: 'groq', name: 'Groq (Llama-3.1)', enabled: true },\r\n    { id: 'ollama', name: 'Ollama (Local)', enabled: true, baseUrl: 'http://localhost:11434' },\r\n    { id: 'huggingface', name: 'HuggingFace', enabled: true },\r\n    { id: 'deepseek', name: 'DeepSeek', enabled: true }\r\n  ]);\r\n\r\n  const [selectedProvider, setSelectedProvider] = useState<LLMProvider>('openai');\r\n  const [agentTaskForce, setAgentTaskForce] = useState<QuantumAgentStatus[]>(() =>\r\n    Array.from({ length: 120 }).map((_, i) => ({\r\n      id: i + 1,\r\n      role: `Agent-${i + 1}`,\r\n      status: 'idle',\r\n      progress: 0\r\n    }))\r\n  );\r\n\r\n  const [hubMetrics, setHubMetrics] = useState<any>(null);\r\n  const [genome, setGenome] = useState<any>(null);\r\n  const [lineage, setLineage] = useState<any>(null);\r\n\r\n  const [tele, setTele] = useState<TelemetryState>({\r\n    zenoCycles: 0,\r\n    pathsPruned: 0,\r\n    eventLogs: [\r\n      { id: '1', cls: 'g', text: '<b>BOOT</b> — 120 Sovereign agents initialised', time: '00:00' },\r\n      { id: '2', cls: 'p', text: '<b>Zeno</b> — Interrogator subsystem ONLINE', time: '00:01' },\r\n      { id: '3', cls: 'a', text: '<b>co2router_srv</b> — Capability negotiation pending', time: '00:01' }\r\n    ]\r\n  });\r\n\r\n  const [evTimeOffset, setEvTimeOffset] = useState(2);\r\n  const outRef = useRef<HTMLDivElement>(null);\r\n\r\n  // Auto-scroll\r\n  useEffect(() => {\r\n    if (outRef.current) {\r\n      outRef.current.scrollTop = outRef.current.scrollHeight;\r\n    }\r\n  }, [logs, isTyping]);\r\n\r\n  useEffect(() => {\r\n    const bootSequence = async () => {\r\n      await sleep(100);\r\n      pushLog('—'.repeat(44), 'sep');\r\n      pushLog('  VEKLOM TERMINAL  //  UACP v4.0', 'hdr');\r\n      pushLog('  Neural Orchestration Engine · Antigravity v4.0', 'dim');\r\n      pushLog('—'.repeat(44), 'sep');\r\n      await sleep(200); pushLog('[BOOT]  Quantum context surface…', 'sys');\r\n      await sleep(200); pushLog('[BOOT]  MCP host adapter loaded', 'sys');\r\n      await sleep(200); pushLog('        ✓  filesystem_srv  (stdio)', 'ok');\r\n      await sleep(200); pushLog('        ✓  quantum_srv     (SSE, 1024 qubits)', 'ok');\r\n      await sleep(200); pushLog('        ⚠  co2router_srv   (capability pending)', 'warn');\r\n      await sleep(200); pushLog('[BOOT]  Zeno Interrogator: ONLINE', 'sys');\r\n      await sleep(200); pushLog('[BOOT]  Gladiator Engine: 8 paths ready', 'sys');\r\n      await sleep(200); pushLog('[BOOT]  Cognitive Engine: CONNECTED', 'ok');\r\n      await sleep(150); pushLog('', 'out');\r\n      await sleep(150); pushLog('Tap a chip or type a command. Explore all tabs below.', 'dim');\r\n      await sleep(150); pushLog('—'.repeat(44), 'sep');\r\n    };\r\n    bootSequence();\r\n  }, []);\r\n\r\n  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));\r\n\r\n  const pushLog = (text: string, type: LogType, extra: Partial<LogEntry> = {}) => {\r\n    setLogs(p => [...p, { id: crypto.randomUUID(), text, type, ...extra }]);\r\n  };\r\n\r\n  const updateTele = (z: number, p: number) => {\r\n    setTele(prev => ({\r\n      ...prev,\r\n      zenoCycles: prev.zenoCycles + z,\r\n      pathsPruned: prev.pathsPruned + p\r\n    }));\r\n  };\r\n\r\n  useEffect(() => {\r\n    const fetchAgentsAndMetrics = async () => {\r\n      try {\r\n        const [agentsRes, metricsRes, genRes, linRes] = await Promise.all([\r\n            fetch(\"/api/agents/task-force\"),\r\n            fetch(\"/api/uacp/hub/metrics\"),\r\n            fetch(\"/api/pgl/genome\"),\r\n            fetch(\"/api/pgl/ledger\")\r\n        ]);\r\n        if (agentsRes.ok) {\r\n          const data = await agentsRes.json();\r\n          setAgentTaskForce(data);\r\n        }\r\n        if (metricsRes.ok) {\r\n          const metricsData = await metricsRes.json();\r\n          setHubMetrics(metricsData);\r\n        }\r\n        if (genRes.ok) setGenome(await genRes.json());\r\n        if (linRes.ok) setLineage(await linRes.json());\r\n      } catch (e) {\r\n        // graceful degrade\r\n      }\r\n    };\r\n\r\n    // Initial fetch\r\n    fetchAgentsAndMetrics();\r\n\r\n    const interval = setInterval(() => {\r\n      fetchAgentsAndMetrics();\r\n      setTele(prev => ({\r\n        ...prev,\r\n        zenoCycles: prev.zenoCycles + Math.floor(Math.random() * 3)\r\n      }));\r\n    }, 2000);\r\n    return () => clearInterval(interval);\r\n  }, []);\r\n\r\n  const cmdMap = [\r\n    { match: 'health check', route: '/health', method: 'GET' },\r\n    { match: 'status', route: '/status', method: 'GET' },\r\n    { match: 'telemetry', route: '/api/quantum-metrics', method: 'GET' },\r\n    { match: 'monitoring health', route: '/api/v1/sys/health', method: 'GET' },\r\n    { match: 'uacp security', route: '/api/uacp/security', method: 'GET' },\r\n    { match: 'uacp layers', route: '/api/uacp/layers', method: 'GET' },\r\n    { match: 'uacp execute', route: '/internal/uacp/execute', method: 'POST' },\r\n    { match: 'workspace members', route: '/api/v1/workspace/members', method: 'GET' },\r\n    { match: 'api keys list', route: '/api/v1/auth/api-keys', method: 'GET' },\r\n    { match: 'api key create', route: '/api/v1/auth/api-keys', method: 'POST' },\r\n    { match: 'workspace models', route: '/api/v1/workspace/models', method: 'GET' },\r\n    { match: 'generic models', route: '/api/v1/models', method: 'GET' },\r\n    { match: 'providers', route: '/api/v1/providers', method: 'GET' },\r\n    { match: 'exec v1', route: '/api/v1/exec', method: 'POST' },\r\n    { match: 'exec', route: '/v1/exec', method: 'POST' },\r\n    { match: 'ai complete', route: '/api/v1/ai/complete', method: 'POST' },\r\n    { match: 'listings', route: '/api/v1/listings', method: 'GET' },\r\n    { match: 'marketplace', route: '/api/v1/marketplace', method: 'GET' },\r\n    { match: 'pipelines list', route: '/api/v1/pipelines', method: 'GET' },\r\n    { match: 'pipeline create', route: '/api/v1/pipelines', method: 'POST' },\r\n    { match: 'pipeline save', route: '/api/v1/pipelines', method: 'POST' },\r\n    { match: 'deployments list', route: '/api/v1/deployments', method: 'GET' },\r\n    { match: 'deployment create', route: '/api/v1/deployments', method: 'POST' },\r\n    { match: 'audit logs', route: '/api/v1/audit/logs', method: 'GET' },\r\n    { match: 'wallet', route: '/api/v1/wallet', method: 'GET' },\r\n    { match: 'add reserve', route: '/api/v1/billing/add-reserve', method: 'POST' },\r\n    { match: 'reserve action', route: '/api/v1/wallet/reserve', method: 'POST' },\r\n    { match: 'compliance', route: '/api/v1/compliance', method: 'GET' },\r\n    { match: 'export evidence', route: '/api/v1/compliance/export', method: 'POST' },\r\n    { match: 'schedule evidence', route: '/api/v1/compliance/schedule-export', method: 'POST' }\r\n  ];\r\n\r\n  const doRealCommand = async (cmdInfo: typeof cmdMap[0], rawArgs: string) => {\r\n    pushLog(`[EXEC]    Triggering ${cmdInfo.match}...`, 'sys');\r\n    pushLog(`[ROUTER]  ${cmdInfo.method} ${cmdInfo.route}`, 'sys');\r\n\r\n    await sleep(300);\r\n\r\n    try {\r\n        const opts: RequestInit = { method: cmdInfo.method };\r\n        if (cmdInfo.method === 'POST') {\r\n             opts.headers = { 'Content-Type': 'application/json' };\r\n             opts.body = JSON.stringify({ action: \"terminal_invoke\", payload: rawArgs });\r\n        }\r\n\r\n        const t = performance.now();\r\n        const res = await fetch(cmdInfo.route, opts);\r\n        const elapsed = performance.now() - t;\r\n\r\n        if (!res.ok) {\r\n            pushLog(`[ERROR]   HTTP ${res.status} ${res.statusText}`, 'warn');\r\n            if (res.status === 404) {\r\n               pushLog('          Route is not currently implemented on the backend.', 'warn');\r\n            } else {\r\n               let bod = await res.text().catch(()=>null);\r\n               if (bod) pushLog(`          ${bod.substring(0, 100)}`, 'dim');\r\n            }\r\n        } else {\r\n             const data = await res.json().catch(()=>null);\r\n             if (data) {\r\n                  const str = JSON.stringify(data, null, 2);\r\n                  const lines = str.split('\\n').filter(l => l.trim() !== '' && l.trim() !== '{' && l.trim() !== '}').map(l => l.substring(0, 60));\r\n                  pushLog(`[SUCCESS] Transmit time: ${elapsed.toFixed(1)}ms. Response:`, 'ok');\r\n                  lines.slice(0, 8).forEach(l => pushLog(`          ${l}`, 'out'));\r\n                  if (lines.length > 8) pushLog(`          ... (${lines.length - 8} more lines)`, 'out');\r\n             } else {\r\n                  pushLog(`[SUCCESS] Transmit time: ${elapsed.toFixed(1)}ms. (Empty body)`, 'ok');\r\n             }\r\n        }\r\n    } catch (err: any) {\r\n         pushLog(`[FAULT]   Network failure: ${err.message}`, 'error');\r\n    }\r\n\r\n    updateTele(0, 1);\r\n  };\r\n\r\n  const submitCmd = async () => {\r\n    const raw = inputVal.trim();\r\n    if (!raw) return;\r\n    setInputVal('');\r\n\r\n    pushLog('', 'out');\r\n    pushLog(`$ ${raw}`, 'pmt');\r\n\r\n    setIsTyping(true);\r\n    setZenoState({ on: true, lbl: 'INTERROGATING' });\r\n\r\n    const aInterval = setInterval(() => {\r\n      setAgentTaskForce(p => p.map(a => Math.random() > 0.82 ? { ...a, status: ['assigned', 'executing', 'blocked', 'idle'][Math.floor(Math.random() * 4)] as any } : a));\r\n    }, 150);\r\n\r\n    try {\r\n      const lo = raw.toLowerCase();\r\n      const mapped = cmdMap.find(c => lo === c.match || lo.startsWith(c.match));\r\n\r\n      if (mapped) {\r\n         await doRealCommand(mapped, raw);\r\n      } else {\r\n         // USE REAL BACKEND ENGINE\r\n         const response = await fetch('/api/terminal/shell', {\r\n           method: 'POST',\r\n           headers: { 'Content-Type': 'application/json' },\r\n           body: JSON.stringify({ command: raw })\r\n         });\r\n\r\n         if (response.ok) {\r\n           const backendLogs = await response.json();\r\n           for (const log of backendLogs) {\r\n             pushLog(log.text, log.type, log);\r\n             if (log.type === 'pur' || log.text.includes('Zeno')) updateTele(64, 0);\r\n             if (log.type === 'ok') updateTele(0, 1);\r\n             await sleep(50); // Small rhythmic delay\r\n           }\r\n         } else {\r\n           try {\r\n             const errData = await response.json();\r\n             const errMsg = Array.isArray(errData) ? errData[0].text : (errData.error || errData.details || 'Unknown Error');\r\n             pushLog(`[FAULT] Engine Error: ${errMsg}`, 'err');\r\n           } catch {\r\n             pushLog('[FAULT] Engine communication failure (500).', 'err');\r\n           }\r\n         }\r\n      }\r\n    } catch (err: any) {\r\n      pushLog(`[FAULT] Neural link severed: ${err.message}`, 'error');\r\n    }\r\n\r\n    setIsTyping(false);\r\n    clearInterval(aInterval);\r\n    setAgentTaskForce(p => p.map(a => ({ ...a, status: 'idle' })));\r\n    setZenoState({ on: false, lbl: 'PHASE_LOCKED' });\r\n  };\r\n\r\n  const handleKeyDown = (e: React.KeyboardEvent) => {\r\n    if (e.key === 'Enter') submitCmd();\r\n  };\r\n\r\n  const fillPrompt = (t: string) => {\r\n    setInputVal(t);\r\n    setActiveView('terminal');\r\n  };\r\n\r\n  const pct = Math.min((tele.zenoCycles/512)*100, 100).toFixed(0);\r\n  const coh = (99.8 - tele.pathsPruned*0.3).toFixed(1);\r\n\r\n  const viewVariants = {\r\n    initial: { opacity: 0, scale: 0.98 },\r\n    animate: { opacity: 1, scale: 1, transition: { duration: 0.2, ease: \"easeOut\" } },\r\n    exit: { opacity: 0, scale: 0.98, transition: { duration: 0.15, ease: \"easeIn\" } },\r\n  };\r\n\r\n  return (\r\n    <div className=\"shell h-full flex flex-col bg-[#080b0f] text-[#cdd9e5] font-mono relative overflow-hidden\">\r\n      <div className=\"scanline-fx\"></div>\r\n\r\n      <ZenoCanvas zenoOn={zenoState.on} zenoLabel={zenoState.lbl} />\r\n\r\n      {/* VIEWS */}\r\n      <div className=\"views flex-grow relative overflow-hidden\">\r\n        <AnimatePresence mode=\"wait\">\r\n          {activeView === 'terminal' && (\r\n            <motion.div\r\n              key=\"terminal\"\r\n              initial=\"initial\"\r\n              animate=\"animate\"\r\n              exit=\"exit\"\r\n              variants={viewVariants}\r\n              className=\"view active absolute inset-0 flex flex-col\"\r\n              id=\"v-terminal\"\r\n            >\r\n          <div className=\"chips-bar flex gap-2 p-2 overflow-x-auto shrink-0\">\r\n            <div className=\"chip whitespace-nowrap px-3 py-1 bg-[#111820] border border-[#63b3ed1f] rounded-full text-[10px] cursor-pointer\" onClick={() => fillPrompt('Optimize a 10,000-bit monochrome bitmap transmission')}>\uD83D\uDCE1 Bitmap tx</div>\r\n            <div className=\"chip whitespace-nowrap px-3 py-1 bg-[#111820] border border-[#63b3ed1f] rounded-full text-[10px] cursor-pointer\" onClick={() => fillPrompt('Calibrate a thousand-qubit Heron processor')}>⚛\uFE0F Heron QPU</div>\r\n            <div className=\"chip whitespace-nowrap px-3 py-1 bg-[#111820] border border-[#63b3ed1f] rounded-full text-[10px] cursor-pointer\" onClick={() => fillPrompt('Synthesize MCP orchestration plan for CO2 Router')}>\uD83C\uDF3F CO2 Router</div>\r\n            <div className=\"chip whitespace-nowrap px-3 py-1 bg-[#111820] border border-[#63b3ed1f] rounded-full text-[10px] cursor-pointer\" onClick={() => fillPrompt('Run Zeno interrogation on filesystem_srv')}>\uD83D\uDD2C Zeno scan</div>\r\n            <div className=\"chip whitespace-nowrap px-3 py-1 bg-[#111820] border border-[#63b3ed1f] rounded-full text-[10px] cursor-pointer\" onClick={() => fillPrompt('Show MCP mesh topology')}>\uD83D\uDD78\uFE0F MCP mesh</div>\r\n          </div>\r\n\r\n          <div className=\"output flex-grow overflow-y-auto p-4 space-y-1\" id=\"output\" ref={outRef}>\r\n            {logs.map((L) => {\r\n              if (L.type === 'custom') {\r\n                if (L.isSpec && L.specPaths) {\r\n                  return (\r\n                    <div key={L.id} className=\"spec-card bg-[#111820] border border-[#63b3ed1f] rounded-lg p-3 my-2\">\r\n                      {L.specPaths.map((p, i) => (\r\n                        <div key={i} className={`path flex items-center gap-2 text-[11px] mb-1 ${p.pruned ? 'opacity-50 line-through' : ''}`}>\r\n                          <span className=\"p-lbl min-w-[80px]\">{p.l}</span>\r\n                          <div className=\"p-bar flex-grow h-1 bg-[#63b3ed1f] rounded-full overflow-hidden\">\r\n                            <div className={`p-fill h-full bg-gradient-to-r from-[#63b3ed] to-[#bc8cff]`} style={{ width: `${p.v}%` }}></div>\r\n                          </div>\r\n                          <span className=\"p-pct min-w-[30px] text-right\">{p.v}%</span>\r\n                        </div>\r\n                      ))}\r\n                    </div>\r\n                  );\r\n                }\r\n                if (L.isMesh) {\r\n                  return (\r\n                    <div key={L.id} className=\"spec-card bg-[#111820] border border-[#63b3ed1f] rounded-lg p-3 my-2\">\r\n                      <div className=\"text-[9px] text-[#3d5269] uppercase tracking-widest mb-2\">\r\n                        MCP Session · {L.meshLbl || 'JSON-RPC'}\r\n                      </div>\r\n                      <div className=\"flex items-center gap-2 overflow-x-auto pb-1\">\r\n                        <div className=\"flex flex-col items-center gap-1 min-w-[70px]\">\r\n                          <div className=\"px-2 py-1 rounded bg-[#63b3ed21] border border-[#63b3ed4d] text-[#63b3ed] text-[9px]\">UACP HOST</div>\r\n                          <div className=\"text-[8px] text-[#3d5269]\">PerplexTerm</div>\r\n                        </div>\r\n                        <div className=\"flex-grow flex flex-col items-center min-w-[30px]\">\r\n                          <div className=\"text-[8px] text-[#3d5269]\">{L.meshLbl || 'JSON-RPC'}</div>\r\n                          <div className=\"w-full h-px bg-[#63b3ed4d]\"></div>\r\n                        </div>\r\n                        <div className=\"flex flex-col items-center gap-1 min-w-[70px]\">\r\n                          <div className=\"px-2 py-1 rounded bg-[#bc8cff1a] border border-[#63b3ed4d] text-[#bc8cff] text-[9px]\">MCP CLIENT</div>\r\n                          <div className=\"text-[8px] text-[#3d5269]\">Translator</div>\r\n                        </div>\r\n                        <div className=\"flex-grow flex flex-col items-center min-w-[30px]\">\r\n                          <div className=\"text-[8px] text-[#3d5269]\">stdio/SSE</div>\r\n                          <div className=\"w-full h-px bg-[#63b3ed4d]\"></div>\r\n                        </div>\r\n                        <div className=\"flex flex-col items-center gap-1 min-w-[70px]\">\r\n                          <div className=\"px-2 py-1 rounded bg-[#56d36421] border border-[#63b3ed4d] text-[#56d364] text-[9px]\">CTX SERVER</div>\r\n                          <div className=\"text-[8px] text-[#3d5269]\">quantum_srv</div>\r\n                        </div>\r\n                      </div>\r\n                    </div>\r\n                  );\r\n                }\r\n              }\r\n              return <div key={L.id} className={`ln text-[12px] leading-relaxed break-words ${L.type}`}>{L.text}</div>;\r\n            })}\r\n          </div>\r\n\r\n          <div className={`typing px-4 py-1 flex items-center gap-2 transition-opacity ${isTyping ? 'opacity-100' : 'opacity-0'}`} id=\"typing\">\r\n             <div className=\"flex gap-1\">\r\n                <div className=\"w-1.5 h-1.5 rounded-full bg-[#63b3ed] animate-bounce\"></div>\r\n                <div className=\"w-1.5 h-1.5 rounded-full bg-[#63b3ed] animate-bounce [animation-delay:0.2s]\"></div>\r\n                <div className=\"w-1.5 h-1.5 rounded-full bg-[#63b3ed] animate-bounce [animation-delay:0.4s]\"></div>\r\n             </div>\r\n             <div className=\"text-[10px] text-[#3d5269] uppercase tracking-wider\">Cognitive Engine…</div>\r\n          </div>\r\n          <div className=\"input-bar flex items-center gap-2 p-3 bg-[#0d1117] border-t border-[#63b3ed1f] shrink-0\">\r\n            <span className=\"text-[#63b3ed] font-bold\">$</span>\r\n            <input\r\n              className=\"flex-grow bg-transparent border-none outline-none text-[#cdd9e5] text-[14px] placeholder:text-[#3d5269]\"\r\n              id=\"cmd\" type=\"text\" placeholder=\"Enter command…\"\r\n              value={inputVal} onChange={e => setInputVal(e.target.value)} onKeyDown={handleKeyDown}\r\n              autoComplete=\"off\" spellCheck=\"false\"\r\n            />\r\n            <button className=\"px-4 py-2 bg-[#63b3ed21] border border-[#63b3ed4d] text-[#63b3ed] text-[11px] font-bold uppercase rounded hover:bg-[#63b3ed] hover:text-black transition-all\" onClick={submitCmd}>RUN</button>\r\n          </div>\r\n            </motion.div>\r\n          )}\r\n\r\n          {activeView === 'mesh' && (\r\n            <motion.div\r\n              key=\"mesh\"\r\n              initial=\"initial\"\r\n              animate=\"animate\"\r\n              exit=\"exit\"\r\n              variants={viewVariants}\r\n              className=\"view active absolute inset-0 overflow-y-auto p-4 space-y-4\"\r\n              id=\"v-mesh\"\r\n            >\r\n          <div className=\"mesh-view flex flex-col gap-4\">\r\n             <div className=\"text-[9px] uppercase tracking-widest text-[#3d5269] border-b border-[#63b3ed1f] pb-2\">MCP Host–Client–Server Topology</div>\r\n             <div className=\"topology bg-[#111820] border border-[#63b3ed1f] rounded-lg p-4 flex flex-col items-center\">\r\n                <div className=\"topo-node flex flex-col items-center gap-1 w-full max-w-[200px]\">\r\n                  <div className=\"w-full py-2 bg-[#63b3ed21] border border-[#63b3ed4d] text-[#63b3ed] text-center text-[11px] rounded\">UACP HOST</div>\r\n                  <div className=\"text-[9px] text-[#3d5269] uppercase tracking-wider\">Veklom Terminal</div>\r\n                </div>\r\n                <div className=\"topo-arrow flex flex-col items-center py-2\">\r\n                  <div className=\"text-[9px] text-[#3d5269] tracking-wider\">JSON-RPC 2.0 · initialize</div>\r\n                  <div className=\"w-px h-6 bg-[#63b3ed4d] relative\">\r\n                    <div className=\"absolute -bottom-1 -left-[3px] border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-t-[4px] border-t-[#63b3ed4d]\"></div>\r\n                  </div>\r\n                </div>\r\n                <div className=\"topo-node flex flex-col items-center gap-1 w-full max-w-[200px]\">\r\n                  <div className=\"w-full py-2 bg-[#bc8cff1a] border border-[#63b3ed4d] text-[#bc8cff] text-center text-[11px] rounded\">MCP CLIENT</div>\r\n                  <div className=\"text-[9px] text-[#3d5269] uppercase tracking-wider\">Protocol Translator</div>\r\n                </div>\r\n                <div className=\"topo-arrow flex flex-col items-center py-2\">\r\n                  <div className=\"text-[9px] text-[#3d5269] tracking-wider\">stdio / SSE transport</div>\r\n                  <div className=\"w-px h-6 bg-[#63b3ed4d] relative\">\r\n                    <div className=\"absolute -bottom-1 -left-[3px] border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-t-[4px] border-t-[#63b3ed4d]\"></div>\r\n                  </div>\r\n                </div>\r\n                <div className=\"topo-node flex flex-col items-center gap-1 w-full max-w-[200px]\">\r\n                  <div className=\"w-full py-2 bg-[#56d36421] border border-[#63b3ed4d] text-[#56d364] text-center text-[11px] rounded\">CONTEXT SERVERS</div>\r\n                  <div className=\"text-[9px] text-[#3d5269] uppercase tracking-wider text-center px-2\">filesystem · quantum · co2router</div>\r\n                </div>\r\n             </div>\r\n\r\n             <div className=\"text-[9px] uppercase tracking-widest text-[#3d5269] border-b border-[#63b3ed1f] pb-2\">4-Step Protocol Handshake (I/O Riot NG)</div>\r\n             <div className=\"grid grid-cols-2 gap-2\">\r\n               <div className=\"bg-[#111820] border border-[#63b3ed1f] rounded-lg p-3\"><div className=\"text-[9px] uppercase text-[#3d5269] mb-1\">1. Capability Discovery</div><div className=\"text-[#56d364] font-bold\">OK</div></div>\r\n               <div className=\"bg-[#111820] border border-[#63b3ed1f] rounded-lg p-3\"><div className=\"text-[9px] uppercase text-[#3d5269] mb-1\">2. Protocol Negotiation</div><div className=\"text-[#56d364] font-bold\">OK</div></div>\r\n               <div className=\"bg-[#111820] border border-[#63b3ed1f] rounded-lg p-3\"><div className=\"text-[9px] uppercase text-[#3d5269] mb-1\">3. Session Initialization</div><div className=\"text-[#56d364] font-bold\">OK</div></div>\r\n               <div className=\"bg-[#111820] border border-[#63b3ed1f] rounded-lg p-3\"><div className=\"text-[9px] uppercase text-[#3d5269] mb-1\">4. Transport Validation</div><div className=\"text-[#56d364] font-bold\">OK</div></div>\r\n             </div>\r\n\r\n             <div className=\"text-[9px] uppercase tracking-widest text-[#3d5269] border-b border-[#63b3ed1f] pb-2\">Context Servers</div>\r\n             <div className=\"bg-[#111820] border border-[#63b3ed1f] rounded-lg p-4 space-y-2\">\r\n                <div className=\"flex justify-between items-center\"><span className=\"text-[12px] font-bold\">filesystem_srv</span><span className=\"px-2 py-0.5 bg-[#56d36421] text-[#56d364] text-[9px] rounded-full\">ACTIVE</span></div>\r\n                <div className=\"flex justify-between text-[10px]\"><span className=\"text-[#6b8299]\">Transport</span><span className=\"text-[#63b3ed]\">stdio</span></div>\r\n                <div className=\"flex justify-between text-[10px]\"><span className=\"text-[#6b8299]\">Session</span><span className=\"text-[#56d364]\">Stateful 1:1</span></div>\r\n                <div className=\"flex justify-between text-[10px]\"><span className=\"text-[#6b8299]\">Protocol</span><span className=\"text-[#63b3ed]\">v2025-03-26</span></div>\r\n                <div className=\"pt-2 flex flex-wrap gap-1\">\r\n                   <div className=\"px-2 py-0.5 bg-[#151e2b] border border-[#63b3ed1f] rounded text-[9px] text-[#6b8299]\">tools × 6</div>\r\n                   <div className=\"px-2 py-0.5 bg-[#151e2b] border border-[#63b3ed1f] rounded text-[9px] text-[#6b8299]\">resources × 12</div>\r\n                   <div className=\"px-2 py-0.5 bg-[#151e2b] border border-[#63b3ed1f] rounded text-[9px] text-[#6b8299]\">prompts × 2</div>\r\n                </div>\r\n             </div>\r\n\r\n             <div className=\"bg-[#111820] border border-[#63b3ed1f] rounded-lg p-4 space-y-2\">\r\n                <div className=\"flex justify-between items-center\"><span className=\"text-[12px] font-bold\">quantum_srv</span><span className=\"px-2 py-0.5 bg-[#56d36421] text-[#56d364] text-[9px] rounded-full\">ACTIVE</span></div>\r\n                <div className=\"flex justify-between text-[10px]\"><span className=\"text-[#6b8299]\">Transport</span><span className=\"text-[#63b3ed]\">SSE</span></div>\r\n                <div className=\"flex justify-between text-[10px]\"><span className=\"text-[#6b8299]\">Session</span><span className=\"text-[#56d364]\">Stateful 1:1</span></div>\r\n                <div className=\"flex justify-between text-[10px]\"><span className=\"text-[#6b8299]\">Qubits</span><span className=\"text-[#bc8cff]\">1,024 registered</span></div>\r\n                <div className=\"pt-2 flex flex-wrap gap-1\">\r\n                   <div className=\"px-2 py-0.5 bg-[#151e2b] border border-[#63b3ed1f] rounded text-[9px] text-[#6b8299]\">tools × 8</div>\r\n                   <div className=\"px-2 py-0.5 bg-[#151e2b] border border-[#63b3ed1f] rounded text-[9px] text-[#6b8299]\">Zeno API</div>\r\n                   <div className=\"px-2 py-0.5 bg-[#151e2b] border border-[#63b3ed1f] rounded text-[9px] text-[#6b8299]\">QPU calibrate</div>\r\n                </div>\r\n             </div>\r\n          </div>\r\n            </motion.div>\r\n          )}\r\n\r\n          {activeView === 'tele' && (\r\n            <motion.div\r\n              key=\"tele\"\r\n              initial=\"initial\"\r\n              animate=\"animate\"\r\n              exit=\"exit\"\r\n              variants={viewVariants}\r\n              className=\"view active absolute inset-0 overflow-y-auto p-4 space-y-4\"\r\n              id=\"v-tele\"\r\n            >\r\n          <div className=\"tele-view flex flex-col gap-4\">\r\n             <div className=\"text-[9px] uppercase tracking-widest text-[#3d5269] border-b border-[#63b3ed1f] pb-2\">Live System Metrics</div>\r\n             <div className=\"grid grid-cols-2 gap-2\">\r\n               <div className=\"bg-[#111820] border border-[#63b3ed1f] rounded-lg p-4 flex flex-col gap-1\">\r\n                  <div className=\"text-[9px] uppercase text-[#3d5269] tracking-widest\">Zeno Cycles</div>\r\n                  <div className=\"text-[22px] font-bold text-[#63b3ed]\">{tele.zenoCycles}</div>\r\n                  <div className=\"text-[10px] text-[#3d5269]\">Total interrogations</div>\r\n               </div>\r\n               <div className=\"bg-[#111820] border border-[#63b3ed1f] rounded-lg p-4 flex flex-col gap-1\">\r\n                  <div className=\"text-[9px] uppercase text-[#3d5269] tracking-widest\">Coherence</div>\r\n                  <div className=\"text-[22px] font-bold text-[#56d364]\">{coh}%</div>\r\n                  <div className=\"text-[10px] text-[#3d5269]\">Phase stability</div>\r\n               </div>\r\n             </div>\r\n\r\n             <div className=\"bg-[#111820] border border-[#63b3ed1f] rounded-lg p-4 space-y-3\">\r\n               <div className=\"flex justify-between items-center text-[10px]\">\r\n                  <span className=\"text-[#6b8299] uppercase\">Quantum context buffer</span>\r\n                  <span className=\"text-[#63b3ed] font-bold\">{pct}%</span>\r\n               </div>\r\n               <div className=\"h-1 bg-[#63b3ed1f] rounded-full overflow-hidden\">\r\n                  <div className=\"h-full bg-gradient-to-r from-[#63b3ed] to-[#bc8cff]\" style={{width: `${pct}%`}}></div>\r\n               </div>\r\n               <div className=\"flex justify-between items-center text-[10px]\">\r\n                  <span className=\"text-[#6b8299] uppercase\">Gladiator path slots</span>\r\n                  <span className=\"text-[#63b3ed] font-bold\">37.5%</span>\r\n               </div>\r\n               <div className=\"h-1 bg-[#63b3ed1f] rounded-full overflow-hidden\">\r\n                  <div className=\"h-full bg-gradient-to-r from-[#63b3ed] to-[#bc8cff]\" style={{width:'37.5%'}}></div>\r\n               </div>\r\n             </div>\r\n\r\n             <div className=\"grid grid-cols-1 gap-4\">\r\n                <SpectralAnalysis data={{ v1x: 80, v2x: 20, carpet: 50 }} />\r\n                <GovernanceMonitor />\r\n                <ComplianceHorizon />\r\n                <BoundedScaling metrics={{phi_ratio: 1.618, carbon_intensity: 0.85, utilization: 0.92, water_risk: 'low'}}/>\r\n                <SEKEDCompiler state={{energy: 0.8, resilience: 0.95, confidence: 0.88, diversity: 0.7, stability: 0.9, directive: 'EXECUTE'}} />\r\n                <UACPLayers layers={[\r\n                  {layer: 'cognitive', status: 'active', latency: 120},\r\n                  {layer: 'context', status: 'isolated', latency: 15},\r\n                  {layer: 'execution', status: 'pending', latency: 10},\r\n                  {layer: 'hitl', status: 'idempotent', latency: 0}\r\n                ]} />\r\n             </div>\r\n\r\n             <div className=\"text-[9px] uppercase tracking-widest text-[#3d5269] border-b border-[#63b3ed1f] pb-2\">Event Log</div>\r\n             <div className=\"bg-[#111820] border border-[#63b3ed1f] rounded-lg p-4 space-y-3\">\r\n               {tele.eventLogs.map(e => (\r\n                 <div key={e.id} className=\"flex gap-3 items-start pb-2 border-b border-[#63b3ed0a] last:border-none last:pb-0\">\r\n                   <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${e.cls === 'g' ? 'bg-[#56d364]' : e.cls === 'p' ? 'bg-[#bc8cff]' : 'bg-[#e3b341]'}`}></div>\r\n                   <div className=\"flex-grow text-[11px] text-[#6b8299] leading-normal\" dangerouslySetInnerHTML={{__html: e.text}}></div>\r\n                   <div className=\"text-[9px] text-[#3d5269] shrink-0\">{e.time}</div>\r\n                 </div>\r\n               ))}\r\n             </div>\r\n          </div>\r\n            </motion.div>\r\n          )}\r\n\r\n          {activeView === 'paths' && (\r\n            <motion.div\r\n              key=\"paths\"\r\n              initial=\"initial\"\r\n              animate=\"animate\"\r\n              exit=\"exit\"\r\n              variants={viewVariants}\r\n              className=\"view active absolute inset-0 overflow-y-auto p-4 space-y-4\"\r\n              id=\"v-paths\"\r\n            >\r\n          <div className=\"paths-view flex flex-col gap-4\">\r\n            <div className=\"text-[9px] uppercase tracking-widest text-[#3d5269] border-b border-[#63b3ed1f] pb-2\">Gladiator Reasoning Engine — Path History</div>\r\n\r\n            <div className=\"bg-[#111820] border border-[#63b3ed1f] rounded-lg p-4 space-y-3\">\r\n              <div className=\"flex justify-between items-center mb-1\"><span className=\"text-[11px] font-bold\">Bitmap Transmission (example)</span><span className=\"px-2 py-0.5 bg-[#56d36421] text-[#56d364] text-[9px] rounded-full uppercase\">LOCKED</span></div>\r\n              <div className=\"flex items-center gap-2 text-[10px]\">\r\n                 <span className=\"text-[#3d5269] w-4\">1</span>\r\n                 <span className=\"text-[#6b8299] min-w-[80px]\">RLE-Delta</span>\r\n                 <div className=\"flex-grow h-1.5 bg-[#63b3ed1f] rounded-full overflow-hidden\"><div className=\"h-full bg-gradient-to-r from-[#63b3ed] to-[#bc8cff]\" style={{width:'87%'}}></div></div>\r\n                 <span className=\"text-[#56d364] w-8 text-right\">87%</span>\r\n              </div>\r\n              <div className=\"flex items-center gap-2 text-[10px]\">\r\n                 <span className=\"text-[#3d5269] w-4\">2</span>\r\n                 <span className=\"text-[#6b8299] min-w-[80px]\">Huffman+Q</span>\r\n                 <div className=\"flex-grow h-1.5 bg-[#63b3ed1f] rounded-full overflow-hidden\"><div className=\"h-full bg-gradient-to-r from-[#63b3ed] to-[#bc8cff]\" style={{width:'74%'}}></div></div>\r\n                 <span className=\"text-[#63b3ed] w-8 text-right\">74%</span>\r\n              </div>\r\n              <div className=\"flex items-center gap-2 text-[10px]\">\r\n                 <span className=\"text-[#3d5269] w-4\">4</span>\r\n                 <span className=\"text-[#3d5269] min-w-[80px] line-through\">Raw-LZ4</span>\r\n                 <div className=\"flex-grow h-1.5 bg-[#63b3ed1f] rounded-full overflow-hidden\"><div className=\"h-full bg-[#f8514933]\" style={{width:'22%'}}></div></div>\r\n                 <span className=\"text-[#f85149] w-8 text-right\">22%</span>\r\n                 <span className=\"px-1.5 py-0.5 bg-[#f8514933] text-[#f85149] text-[8px] rounded uppercase\">PRUNED</span>\r\n              </div>\r\n            </div>\r\n\r\n            <div className=\"bg-[#111820] border border-[#63b3ed1f] rounded-lg p-4 space-y-3\">\r\n              <div className=\"flex justify-between items-center mb-1\"><span className=\"text-[11px] font-bold\">Heron QPU Calibration (example)</span><span className=\"px-2 py-0.5 bg-[#56d36421] text-[#56d364] text-[9px] rounded-full uppercase\">LOCKED</span></div>\r\n              <div className=\"flex items-center gap-2 text-[10px]\">\r\n                 <span className=\"text-[#3d5269] w-4\">1</span>\r\n                 <span className=\"text-[#6b8299] min-w-[80px]\">Echoed CR gate</span>\r\n                 <div className=\"flex-grow h-1.5 bg-[#63b3ed1f] rounded-full overflow-hidden\"><div className=\"h-full bg-gradient-to-r from-[#63b3ed] to-[#bc8cff]\" style={{width:'91%'}}></div></div>\r\n                 <span className=\"text-[#56d364] w-8 text-right\">91%</span>\r\n              </div>\r\n              <div className=\"flex items-center gap-2 text-[10px]\">\r\n                 <span className=\"text-[#3d5269] w-4\">2</span>\r\n                 <span className=\"text-[#6b8299] min-w-[80px]\">ZNE mitigation</span>\r\n                 <div className=\"flex-grow h-1.5 bg-[#63b3ed1f] rounded-full overflow-hidden\"><div className=\"h-full bg-gradient-to-r from-[#63b3ed] to-[#bc8cff]\" style={{width:'78%'}}></div></div>\r\n                 <span className=\"text-[#63b3ed] w-8 text-right\">78%</span>\r\n              </div>\r\n            </div>\r\n          </div>\r\n            </motion.div>\r\n          )}\r\n\r\n          {activeView === 'engine' && (\r\n            <motion.div\r\n              key=\"engine\"\r\n              initial=\"initial\"\r\n              animate=\"animate\"\r\n              exit=\"exit\"\r\n              variants={viewVariants}\r\n              className=\"view active absolute inset-0 overflow-y-auto p-4 space-y-4\"\r\n              id=\"v-engine\"\r\n            >\r\n          <div className=\"engine-view flex flex-col gap-4\">\r\n             <div className=\"flex items-center justify-between text-[11px] bg-[#111820] border border-[#63b3ed1f] rounded-lg p-3\">\r\n                <span className=\"text-[#6b8299]\">Primary Provider: </span>\r\n                <select className=\"bg-[#0d1117] text-[#63b3ed] border border-[#63b3ed1f] px-2 py-1 rounded text-[10px] outline-none\" value={selectedProvider} onChange={e => setSelectedProvider(e.target.value as LLMProvider)}>\r\n                  {providers.map(p => (\r\n                    <option key={p.id} value={p.id}>{p.name}</option>\r\n                  ))}\r\n                </select>\r\n             </div>\r\n\r\n             <div className=\"text-[9px] uppercase tracking-widest text-[#3d5269] border-b border-[#63b3ed1f] pb-2\">LLM Governance & Keys</div>\r\n             <div className=\"flex flex-col gap-3\">\r\n               {providers.map((p, idx) => (\r\n                 <div key={p.id} className=\"p-3 bg-[#111820] border border-[#63b3ed1f] rounded-xl flex flex-col gap-2\">\r\n                   <div className=\"flex items-center justify-between\">\r\n                     <span className=\"text-[11px] font-bold text-white/80\">{p.name}</span>\r\n                     <div className={`text-[8px] font-mono px-1.5 py-0.5 rounded border ${p.id === selectedProvider ? 'bg-[#56d36421] text-[#56d364] border-[#56d3644d]' : 'bg-[#151e2b] text-[#3d5269] border-[#63b3ed1f]'}`}>\r\n                       {p.id === selectedProvider ? 'PRIMARY' : p.enabled ? 'STANDBY' : 'OFFLINE'}\r\n                     </div>\r\n                   </div>\r\n                   <div className=\"grid grid-cols-2 gap-2\">\r\n                     <div className=\"flex flex-col gap-1\">\r\n                       <label className=\"text-[9px] text-[#3d5269] uppercase tracking-tighter\">API Key</label>\r\n                       <input\r\n                         type=\"password\" placeholder=\"••••••••\"\r\n                         className=\"bg-[#0d1117] border border-[#63b3ed1f] rounded px-2 py-1 text-[10px] text-[#63b3ed] outline-none\"\r\n                         value={p.apiKey || ''} onChange={(e) => {\r\n                           const newProviders = [...providers];\r\n                           newProviders[idx] = { ...p, apiKey: e.target.value };\r\n                           setProviders(newProviders);\r\n                         }}\r\n                       />\r\n                     </div>\r\n                     <div className=\"flex flex-col gap-1\">\r\n                       <label className=\"text-[9px] text-[#3d5269] uppercase tracking-tighter\">Base URL</label>\r\n                       <input\r\n                         type=\"text\" placeholder=\"Default\"\r\n                         className=\"bg-[#0d1117] border border-[#63b3ed1f] rounded px-2 py-1 text-[10px] text-[#63b3ed] outline-none\"\r\n                         value={p.baseUrl || ''} onChange={(e) => {\r\n                           const newProviders = [...providers];\r\n                           newProviders[idx] = { ...p, baseUrl: e.target.value };\r\n                           setProviders(newProviders);\r\n                         }}\r\n                       />\r\n                     </div>\r\n                   </div>\r\n                 </div>\r\n               ))}\r\n             </div>\r\n\r\n             <div className=\"bg-[#111820] border border-[#63b3ed1f] rounded-lg p-4 space-y-2\">\r\n                <div className=\"text-[9px] uppercase tracking-widest text-[#3d5269] mb-2\">Hybrid Reasoning Architecture</div>\r\n                <div className=\"flex justify-between text-[10px]\"><span className=\"text-[#6b8299]\">Backbone</span><span className=\"text-[#bc8cff]\">Olmo3-Hybrid</span></div>\r\n                <div className=\"flex justify-between text-[10px]\"><span className=\"text-[#6b8299]\">Paradigm</span><span className=\"text-[#e3b341]\">State-over-Tokens (SoT)</span></div>\r\n                <div className=\"pt-2 flex flex-wrap gap-1\">\r\n                  <div className=\"px-2 py-0.5 bg-[#151e2b] border border-[#63b3ed1f] rounded text-[9px] text-[#6b8299]\">State-Based Recall</div>\r\n                  <div className=\"px-2 py-0.5 bg-[#63b3ed21] border border-[#63b3ed4d] text-[#63b3ed] rounded text-[9px]\">Anti-Collapse Protection</div>\r\n                </div>\r\n             </div>\r\n\r\n             <div className=\"text-[9px] uppercase tracking-widest text-[#3d5269] border-b border-[#63b3ed1f] pb-2\">120-Agent Task Force <span className=\"float-right text-[#63b3ed] font-normal\">{agentTaskForce.filter(a => a.status === 'executing').length} Active</span></div>\r\n             <div className=\"grid grid-cols-10 gap-1 bg-[#111820] p-4 border border-[#63b3ed1f] rounded-xl\">\r\n               {agentTaskForce.map(a => (\r\n                 <div key={a.id} className={`w-full aspect-square border border-[#63b3ed1f] rounded-sm transition-all ${a.status === 'executing' ? 'bg-[#63b3ed4d] border-[#63b3ed99]' : a.status === 'assigned' ? 'bg-[#bc8cff33] border-[#bc8cff66]' : a.status === 'blocked' ? 'bg-[#e3b34133] border-[#e3b34166]' : 'bg-[#0d1117]'}`} title={`${a.role}: ${a.status}`}></div>\r\n               ))}\r\n             </div>\r\n             <div className=\"flex justify-center gap-4 text-[10px] text-[#6b8299]\">\r\n               <div className=\"flex items-center gap-1\"><div className=\"w-2 h-2 bg-[#0d1117] border border-[#63b3ed1f]\"></div> Idle</div>\r\n               <div className=\"flex items-center gap-1\"><div className=\"w-2 h-2 bg-[#bc8cff33] border-[#bc8cff66]\"></div> Assigned</div>\r\n               <div className=\"flex items-center gap-1\"><div className=\"w-2 h-2 bg-[#63b3ed4d] border-[#63b3ed99]\"></div> Executing</div>\r\n               <div className=\"flex items-center gap-1\"><div className=\"w-2 h-2 bg-[#e3b34133] border-[#e3b34166]\"></div> Blocked</div>\r\n             </div>\r\n\r\n             <div className=\"text-[9px] uppercase tracking-widest text-[#3d5269] border-b border-[#63b3ed1f] pb-2\">Operational Hub Metrics</div>\r\n             <div className=\"grid grid-cols-2 gap-2\">\r\n               <div className=\"bg-[#111820] border border-[#63b3ed1f] rounded-lg p-3 flex flex-col gap-1\">\r\n                  <div className=\"text-[9px] uppercase text-[#3d5269]\">Determinism</div>\r\n                  <div className=\"text-lg font-bold text-[#e3b341]\">{hubMetrics ? (hubMetrics.certainty_index * 100).toFixed(2) : '99.9'}%</div>\r\n               </div>\r\n               <div className=\"bg-[#111820] border border-[#63b3ed1f] rounded-lg p-3 flex flex-col gap-1\">\r\n                  <div className=\"text-[9px] uppercase text-[#3d5269]\">Latency</div>\r\n                  <div className=\"text-lg font-bold text-[#56d364]\">{hubMetrics ? hubMetrics.latency.toFixed(1) : '14.0'}ms</div>\r\n               </div>\r\n             </div>\r\n\r\n             <div className=\"space-y-4 pt-4\">\r\n                {genome ? <GenomeDNA genome={genome} /> : <div className=\"text-[#63b3ed80] text-[10px] tracking-widest text-center py-4 border border-[#63b3ed1a] bg-[#0b121999] rounded-xl uppercase\">Decoding Genome_DNA...</div>}\r\n                {lineage ? <LineageLedger nodes={lineage} /> : <div className=\"text-[#63b3ed80] text-[10px] tracking-widest text-center py-4 border border-[#63b3ed1a] bg-[#0b121999] rounded-xl uppercase\">Assembling Lineage Ledger...</div>}\r\n                <StatePropagationAtlas />\r\n                <ROIPanel />\r\n             </div>\r\n          </div>\r\n            </motion.div>\r\n          )}\r\n\r\n          {activeView === 'hub' && (\r\n            <motion.div\r\n              key=\"hub\"\r\n              initial=\"initial\"\r\n              animate=\"animate\"\r\n              exit=\"exit\"\r\n              variants={viewVariants}\r\n              className=\"view active absolute inset-0 overflow-y-auto p-4 space-y-4\"\r\n              id=\"v-hub\"\r\n            >\r\n          <div className=\"tele-view flex flex-col gap-4\">\r\n             <div className=\"text-[9px] uppercase tracking-widest text-[#3d5269] border-b border-[#63b3ed1f] pb-2\">Strategic Orchestration Hub</div>\r\n             <div className=\"flex flex-col gap-4\">\r\n                <IntentConsole\r\n                  onExecute={async (intent) => {\r\n                    pushLog(`> INTENT SUBMITTED: ${intent}`, 'pmt');\r\n                    pushLog(`  ENGAGING NEURAL ORCHESTRATION CLUSTER...`, 'sys');\r\n                    setActiveView('terminal');\r\n                    try {\r\n                      const res = await fetch('/api/cognitive/orchestrate', {\r\n                        method: 'POST',\r\n                        headers: { 'Content-Type': 'application/json' },\r\n                        body: JSON.stringify({ prompt: intent, provider: selectedProvider })\r\n                      });\r\n                      const data = await res.json();\r\n                      if (!res.ok) {\r\n                        pushLog(`  [ERROR] ${data.details || 'Neural core link timeout.'}`, 'err');\r\n                      } else {\r\n                        pushLog(`  Consensus convergence achieved via mesh.`, 'hdr');\r\n                        if (data.action_plan?.steps) {\r\n                          data.action_plan.steps.forEach((step: string) => pushLog(`  - ${step}`, 'sys'));\r\n                        } else if (data.response) {\r\n                          pushLog(`  ${data.response}`, 'sys');\r\n                        }\r\n                      }\r\n                    } catch (err) {\r\n                      pushLog(`  [ERROR] Network or server failure routing to cluster.`, 'err');\r\n                    }\r\n                  }}\r\n                  isLocked={false}\r\n                  selectedProvider={selectedProvider}\r\n                  onProviderChange={setSelectedProvider}\r\n                  providers={providers}\r\n                />\r\n                <AgentLatencyVisualizer />\r\n                <SignalIngestionFeed signals={[]} />\r\n                <ProbabilityMatrix revision=\"1.0.4\" isCompiled={false} />\r\n                <AgentConsensusMatrix activeNodes={10} consensusModel=\"Gemini Pro Integrated\" />\r\n                <MemoryVault />\r\n                <PolicyEvaluationPanel status=\"ACTIVE\" />\r\n                <ObservabilitySignals signals={[]} />\r\n                <DeterminismRatio ratio={3.0} certainty={0.9999} noise={0.0001} entropy={0.0} />\r\n                <ArchivesOfOrder isLocked={true} latency={14} coherence={84} progress={0.0000001} />\r\n                <EmissionsTrajectory data={[]} />\r\n                <RegionalEmittersPanel emitters={[]} />\r\n                <MitigationPathwaysPanel />\r\n                <GovernanceRoadmap phases={[]} />\r\n                <IdentityGovernancePanel data={{}} />\r\n                <MCPGateway status={{sanitization: 'active', redaction: 'active', auditing: 'active', egress_control: 'active', last_scan_result: 'clear'}} />\r\n                <ThreatLandscape surfaces={[]} />\r\n             </div>\r\n          </div>\r\n            </motion.div>\r\n          )}\r\n\r\n          {activeView === 'trust' && (\r\n            <motion.div\r\n              key=\"trust\"\r\n              initial=\"initial\"\r\n              animate=\"animate\"\r\n              exit=\"exit\"\r\n              variants={viewVariants}\r\n              className=\"view active absolute inset-0 overflow-y-auto p-4\"\r\n              id=\"v-trust\"\r\n            >\r\n          <div className=\"tele-view\">\r\n             <div className=\"text-[9px] uppercase tracking-widest text-[#3d5269] border-b border-[#63b3ed1f] pb-2\">Agent Trust Scores</div>\r\n             <div className=\"mt-4\">\r\n                <AgentTrustScore />\r\n             </div>\r\n          </div>\r\n            </motion.div>\r\n          )}\r\n\r\n          {activeView === 'dashboard' && (\r\n            <motion.div\r\n              key=\"dashboard\"\r\n              initial=\"initial\"\r\n              animate=\"animate\"\r\n              exit=\"exit\"\r\n              variants={viewVariants}\r\n              className=\"view active absolute inset-0 overflow-y-auto\"\r\n              id=\"v-dashboard\"\r\n            >\r\n           <QuantumDashboard />\r\n            </motion.div>\r\n          )}\r\n\r\n          {activeView === 'tools' && (\r\n            <motion.div\r\n              key=\"tools\"\r\n              initial=\"initial\"\r\n              animate=\"animate\"\r\n              exit=\"exit\"\r\n              variants={viewVariants}\r\n              className=\"view active absolute inset-0 overflow-y-auto p-4\"\r\n              id=\"v-tools\"\r\n            >\r\n           <ToolExecutor />\r\n            </motion.div>\r\n          )}\r\n\r\n          {activeView === 'climate' && (\r\n            <motion.div\r\n              key=\"climate\"\r\n              initial=\"initial\"\r\n              animate=\"animate\"\r\n              exit=\"exit\"\r\n              variants={viewVariants}\r\n              className=\"view active absolute inset-0 overflow-y-auto p-4 flex flex-col gap-4\"\r\n              id=\"v-climate\"\r\n            >\r\n              <div className=\"text-[9px] uppercase tracking-widest text-[#3d5269] border-b border-[#63b3ed1f] pb-2\">Climate & Sustainability</div>\r\n              <EmissionsTrajectory data={[]} />\r\n              <RegionalEmittersPanel emitters={[]} />\r\n              <MitigationPathwaysPanel />\r\n              <BoundedScaling metrics={{phi_ratio: 1.618, carbon_intensity: 0.85, utilization: 0.92, water_risk: 'low'}}/>\r\n            </motion.div>\r\n          )}\r\n\r\n          {activeView === 'security' && (\r\n            <motion.div\r\n              key=\"security\"\r\n              initial=\"initial\"\r\n              animate=\"animate\"\r\n              exit=\"exit\"\r\n              variants={viewVariants}\r\n              className=\"view active absolute inset-0 overflow-y-auto p-4 flex flex-col gap-4\"\r\n              id=\"v-security\"\r\n            >\r\n              <div className=\"text-[9px] uppercase tracking-widest text-[#3d5269] border-b border-[#63b3ed1f] pb-2\">Security & Governance</div>\r\n              <ThreatLandscape surfaces={[]} />\r\n              <IdentityGovernancePanel data={{}} />\r\n              <PolicyEvaluationPanel status=\"ACTIVE\" />\r\n              <GovernanceMonitor />\r\n              <MCPGateway status={{sanitization: 'active', redaction: 'active', auditing: 'active', egress_control: 'active', last_scan_result: 'clear'}} />\r\n            </motion.div>\r\n          )}\r\n        </AnimatePresence>\r\n      </div>\r\n\r\n      {/* Bottom Nav */}\r\n      <div className=\"bnav flex bg-[#0d1117] border-t border-[#63b3ed1f] shrink-0 overflow-x-auto scrollbar-hide\">\r\n        <div className={`bt flex-grow flex flex-col items-center justify-center p-2 text-[8px] uppercase tracking-widest cursor-pointer ${activeView === 'terminal' ? 'text-[#63b3ed]' : 'text-[#3d5269]'}`} onClick={() => setActiveView('terminal')}>Terminal</div>\r\n        <div className={`bt flex-grow flex flex-col items-center justify-center p-2 text-[8px] uppercase tracking-widest cursor-pointer ${activeView === 'mesh' ? 'text-[#63b3ed]' : 'text-[#3d5269]'}`} onClick={() => setActiveView('mesh')}>Mesh</div>\r\n        <div className={`bt flex-grow flex flex-col items-center justify-center p-2 text-[8px] uppercase tracking-widest cursor-pointer ${activeView === 'tele' ? 'text-[#63b3ed]' : 'text-[#3d5269]'}`} onClick={() => setActiveView('tele')}>Telemetry</div>\r\n        <div className={`bt flex-grow flex flex-col items-center justify-center p-2 text-[8px] uppercase tracking-widest cursor-pointer ${activeView === 'paths' ? 'text-[#63b3ed]' : 'text-[#3d5269]'}`} onClick={() => setActiveView('paths')}>Paths</div>\r\n        <div className={`bt flex-grow flex flex-col items-center justify-center p-2 text-[8px] uppercase tracking-widest cursor-pointer ${activeView === 'engine' ? 'text-[#63b3ed]' : 'text-[#3d5269]'}`} onClick={() => setActiveView('engine')}>Engine</div>\r\n        <div className={`bt flex-grow flex flex-col items-center justify-center p-2 text-[8px] uppercase tracking-widest cursor-pointer ${activeView === 'hub' ? 'text-[#63b3ed]' : 'text-[#3d5269]'}`} onClick={() => setActiveView('hub')}>Hub</div>\r\n        <div className={`bt flex-grow flex flex-col items-center justify-center p-2 text-[8px] uppercase tracking-widest cursor-pointer ${activeView === 'trust' ? 'text-[#63b3ed]' : 'text-[#3d5269]'}`} onClick={() => setActiveView('trust')}>Trust</div>\r\n        <div className={`bt flex-grow flex flex-col items-center justify-center p-2 text-[8px] uppercase tracking-widest cursor-pointer ${activeView === 'dashboard' ? 'text-[#63b3ed]' : 'text-[#3d5269]'}`} onClick={() => setActiveView('dashboard')}>Dashboard</div>\r\n        <div className={`bt flex-grow flex flex-col items-center justify-center p-2 text-[8px] uppercase tracking-widest cursor-pointer ${activeView === 'tools' ? 'text-[#63b3ed]' : 'text-[#3d5269]'}`} onClick={() => setActiveView('tools')}>Tools</div>\r\n        <div className={`bt flex-grow flex flex-col items-center justify-center p-2 text-[8px] uppercase tracking-widest cursor-pointer ${activeView === 'climate' ? 'text-[#63b3ed]' : 'text-[#3d5269]'}`} onClick={() => setActiveView('climate')}>Climate</div>\r\n        <div className={`bt flex-grow flex flex-col items-center justify-center p-2 text-[8px] uppercase tracking-widest cursor-pointer ${activeView === 'security' ? 'text-[#63b3ed]' : 'text-[#3d5269]'}`} onClick={() => setActiveView('security')}>Security</div>\r\n      </div>\r\n    </div>\r\n  );\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/components/QuantumTerminal.tsx b/src/components/QuantumTerminal.tsx
+--- a/src/components/QuantumTerminal.tsx	(revision dc59df07047fd95c74e89f973064282f76363046)
++++ b/src/components/QuantumTerminal.tsx	(date 1782479664254)
+@@ -30,8 +30,7 @@
+ import { AgentLatencyVisualizer } from './AgentLatencyVisualizer';
+ import { ThreatLandscape } from './ThreatLandscape';
+ import QuantumDashboard from './QuantumDashboard';
+-import { ToolExecutor } from './ToolExecutor';
+-import { LLMProvider, ProviderConfig, QuantumAgentStatus } from '../types';
++import { API_BASE_URL } from '../data/pglLoader';
+ 
+ type ViewType = 'terminal' | 'mesh' | 'tele' | 'paths' | 'engine' | 'hub' | 'trust' | 'dashboard' | 'tools' | 'climate' | 'security';
+ type LogType = 'sys' | 'pmt' | 'out' | 'ok' | 'warn' | 'err' | 'error' | 'dim' | 'pur' | 'hdr' | 'sep' | 'custom';
+@@ -284,12 +283,15 @@
+     { match: 'reserve action', route: '/api/v1/wallet/reserve', method: 'POST' },
+     { match: 'compliance', route: '/api/v1/compliance', method: 'GET' },
+     { match: 'export evidence', route: '/api/v1/compliance/export', method: 'POST' },
+-    { match: 'schedule evidence', route: '/api/v1/compliance/schedule-export', method: 'POST' }
++    { match: 'schedule evidence', route: '/api/v1/compliance/schedule-export', method: 'POST' },
++    { match: 'interlink health', route: '/health', method: 'GET' },
++    { match: 'interlink audit', route: '/api/audit', method: 'GET' },
++    { match: 'interlink ui', route: '/ui', method: 'GET' }
+   ];
+ 
+   const doRealCommand = async (cmdInfo: typeof cmdMap[0], rawArgs: string) => {
+     pushLog(`[EXEC]    Triggering ${cmdInfo.match}...`, 'sys');
+-    pushLog(`[ROUTER]  ${cmdInfo.method} ${cmdInfo.route}`, 'sys');
++    pushLog(`[ROUTER]  ${cmdInfo.method} ${API_BASE_URL}${cmdInfo.route}`, 'sys');
+ 
+     await sleep(300);
+ 
+@@ -301,7 +303,7 @@
+         }
+ 
+         const t = performance.now();
+-        const res = await fetch(cmdInfo.route, opts);
++        const res = await fetch(`${API_BASE_URL}${cmdInfo.route}`, opts);
+         const elapsed = performance.now() - t;
+ 
+         if (!res.ok) {
+@@ -354,7 +356,7 @@
+          await doRealCommand(mapped, raw);
+       } else {
+          // USE REAL BACKEND ENGINE
+-         const response = await fetch('/api/terminal/shell', {
++         const response = await fetch(`${API_BASE_URL}/api/terminal/shell`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command: raw })
