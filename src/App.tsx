@@ -108,6 +108,9 @@ export default function App() {
     <div className="w-screen h-screen bg-[#030303] text-white/90 overflow-hidden flex flex-col font-sans border-4 border-[#0A0A0C] relative">
       <AmbientIntervention />
       
+      {/* Ambient Intervention Modal — intercepts MISSING_KEY, QUARANTINE, PAYMENT_REQUIRED */}
+      <AmbientIntervention />
+
       {/* 1. Futuristic Scanline CRT overlay for cinematic feel */}
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-electric-cyan/2 w-full animate-scanline pointer-events-none z-50" />
       

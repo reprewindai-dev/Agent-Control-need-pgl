@@ -1,18 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { AlertOctagon, X, ShieldAlert, KeyRound, Sparkles, CheckCircle2, Zap } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AlertOctagon, X, ShieldAlert, KeyRound, CheckCircle2, Zap } from "lucide-react";
 
 interface InterventionEvent {
   type: string;
   message: string;
   code: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export default function AmbientIntervention() {
   const [isOpen, setIsOpen] = useState(false);
   const [eventData, setEventData] = useState<InterventionEvent | null>(null);
-  
   const [apiKey, setApiKey] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -32,28 +30,27 @@ export default function AmbientIntervention() {
   const handleAction = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
-      // Real-World Hardening: Dispatch resolution event to unblock the agent
-      let resolutionData = {};
+      let resolutionData: Record<string, unknown> = {};
       if (eventData?.type === "MISSING_KEY") {
         resolutionData = { api_key: apiKey };
       } else if (eventData?.type === "QUARANTINE") {
         resolutionData = { approved: true };
       } else if (eventData?.type === "PAYMENT_REQUIRED") {
-        resolutionData = { vnp_injected: 15.00 }; // Hardcoded for this UI logic
+        resolutionData = { vnp_injected: 15.0 };
       }
 
       window.dispatchEvent(
         new CustomEvent("AmbientInterventionResolved", {
           detail: {
             originalEvent: eventData,
-            resolution: resolutionData
-          }
+            resolution: resolutionData,
+          },
         })
       );
-      
-      await new Promise(resolve => setTimeout(resolve, 300));
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
       setIsOpen(false);
       setApiKey("");
     } catch (err) {
@@ -65,141 +62,339 @@ export default function AmbientIntervention() {
 
   if (!isOpen) return null;
 
+  const glowColor =
+    eventData?.type === "QUARANTINE"
+      ? "rgba(245,158,11,0.15)"
+      : eventData?.type === "PAYMENT_REQUIRED"
+        ? "rgba(16,185,129,0.15)"
+        : "rgba(99,102,241,0.15)";
+
+  const accentColor =
+    eventData?.type === "QUARANTINE"
+      ? "#F59E0B"
+      : eventData?.type === "PAYMENT_REQUIRED"
+        ? "#10B981"
+        : "#6366F1";
+
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 font-sans">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/80 backdrop-blur-md"
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 100,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "1rem",
+        fontFamily: "system-ui, -apple-system, sans-serif",
+      }}
+    >
+      {/* Backdrop */}
+      <div
+        onClick={() => setIsOpen(false)}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.85)",
+          backdropFilter: "blur(8px)",
+        }}
+      />
+
+      {/* Modal */}
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          maxWidth: 520,
+          overflow: "hidden",
+          borderRadius: 16,
+          border: "1px solid rgba(255,255,255,0.08)",
+          background: "#0a0a0c",
+          padding: 32,
+          boxShadow: `0 0 80px ${glowColor}, 0 24px 48px rgba(0,0,0,0.6)`,
+        }}
+      >
+        {/* Close */}
+        <button
           onClick={() => setIsOpen(false)}
-        />
-        
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0c] p-8 shadow-2xl backdrop-blur-xl"
+          style={{
+            position: "absolute",
+            right: 16,
+            top: 16,
+            background: "transparent",
+            border: "none",
+            color: "rgba(255,255,255,0.4)",
+            cursor: "pointer",
+            borderRadius: "50%",
+            padding: 6,
+          }}
         >
-          {/* Ambient Glow Effects */}
-          <div className={`pointer-events-none absolute -top-24 -right-24 h-48 w-48 rounded-full blur-[80px] ${
-            eventData?.type === "QUARANTINE" ? "bg-amber-500/20" : 
-            eventData?.type === "PAYMENT_REQUIRED" ? "bg-emerald-500/20" : "bg-indigo-500/20"
-          }`} />
-          
-          <button 
-            onClick={() => setIsOpen(false)}
-            className="absolute right-4 top-4 rounded-full p-2 text-white/50 hover:bg-white/10 hover:text-white"
+          <X size={18} />
+        </button>
+
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: "50%",
+              border: `1px solid ${accentColor}33`,
+              background: `${accentColor}15`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: accentColor,
+            }}
           >
-            <X size={18} />
-          </button>
-
-          <div className="mb-6 flex items-center gap-4">
-            <div className={`flex h-12 w-12 items-center justify-center rounded-full border ${
-              eventData?.type === "QUARANTINE" ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : 
-              eventData?.type === "PAYMENT_REQUIRED" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" :
-              "border-indigo-500/30 bg-indigo-500/10 text-indigo-400"
-            }`}>
-              {eventData?.type === "QUARANTINE" ? <AlertOctagon size={24} /> : 
-               eventData?.type === "PAYMENT_REQUIRED" ? <Zap size={24} /> : 
-               <ShieldAlert size={24} />}
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-white">
-                {eventData?.type === "QUARANTINE" ? "Safety Layer Quarantine" : 
-                 eventData?.type === "PAYMENT_REQUIRED" ? "VNP Micro-Stake Required" : 
-                 "Ambient Intervention"}
-              </h2>
-              <p className={`text-sm ${
-                eventData?.type === "QUARANTINE" ? "text-amber-300" : 
-                eventData?.type === "PAYMENT_REQUIRED" ? "text-emerald-300" : "text-indigo-300"
-              }`}>
-                Quantum Terminal Edge Node
-              </p>
-            </div>
-          </div>
-
-          <div className="mb-6 rounded-lg border border-white/5 bg-white/5 p-4 text-sm text-white/80">
-            <p className="mb-2">
-              <span className="font-medium text-white">Execution Blocked: </span> 
-              {eventData?.type === "QUARANTINE" && "A critical anomaly was detected in this agent's behavior. The capability execution has been quarantined and requires M-of-N human approval."}
-              {eventData?.type === "PAYMENT_REQUIRED" && "Agent workload exceeds allocated budget constraints. x402 Payment Required. Inject VNP Micro-Stakes to unblock."}
-              {eventData?.type === "MISSING_KEY" && "Your task requires a Bring-Your-Own-Key (BYOK) credential that is currently missing from your Sovereign Identity."}
-            </p>
-            {eventData?.message && (
-              <p className="font-mono text-xs text-rose-400/80 mt-2">
-                {eventData.code}: {eventData.message}
-              </p>
+            {eventData?.type === "QUARANTINE" ? (
+              <AlertOctagon size={24} />
+            ) : eventData?.type === "PAYMENT_REQUIRED" ? (
+              <Zap size={24} />
+            ) : (
+              <ShieldAlert size={24} />
             )}
           </div>
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: "#fff", margin: 0 }}>
+              {eventData?.type === "QUARANTINE"
+                ? "Safety Layer Quarantine"
+                : eventData?.type === "PAYMENT_REQUIRED"
+                  ? "VNP Micro-Stake Required"
+                  : "Ambient Intervention"}
+            </h2>
+            <p style={{ fontSize: 13, color: accentColor, margin: "2px 0 0" }}>
+              Terminal Edge Node
+            </p>
+          </div>
+        </div>
 
-          {eventData?.type === "MISSING_KEY" && (
-            <form onSubmit={handleAction} className="space-y-4">
+        {/* Description */}
+        <div
+          style={{
+            marginBottom: 24,
+            borderRadius: 10,
+            border: "1px solid rgba(255,255,255,0.05)",
+            background: "rgba(255,255,255,0.03)",
+            padding: 16,
+            fontSize: 13,
+            color: "rgba(255,255,255,0.75)",
+            lineHeight: 1.5,
+          }}
+        >
+          <span style={{ fontWeight: 600, color: "#fff" }}>Execution Blocked: </span>
+          {eventData?.type === "QUARANTINE" &&
+            "A critical anomaly was detected in this agent\u2019s behavior. The capability execution has been quarantined and requires M-of-N human approval."}
+          {eventData?.type === "PAYMENT_REQUIRED" &&
+            "Agent workload exceeds allocated budget constraints. x402 Payment Required. Inject VNP Micro-Stakes to unblock."}
+          {eventData?.type === "MISSING_KEY" &&
+            "Your task requires a Bring-Your-Own-Key (BYOK) credential that is currently missing from your Sovereign Identity."}
+          {eventData?.message && (
+            <p
+              style={{
+                fontFamily: "monospace",
+                fontSize: 11,
+                color: "rgba(244,63,94,0.7)",
+                marginTop: 8,
+              }}
+            >
+              {eventData.code}: {eventData.message}
+            </p>
+          )}
+        </div>
+
+        {/* MISSING_KEY form */}
+        {eventData?.type === "MISSING_KEY" && (
+          <form onSubmit={handleAction}>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 13,
+                fontWeight: 500,
+                color: "rgba(255,255,255,0.85)",
+                marginBottom: 8,
+              }}
+            >
+              <KeyRound size={16} style={{ color: "#6366F1" }} />
+              Provider API Key
+            </label>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              autoFocus
+              style={{
+                width: "100%",
+                borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.1)",
+                background: "rgba(0,0,0,0.5)",
+                padding: "10px 16px",
+                color: "#fff",
+                fontSize: 14,
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+            <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 16 }}>
+              <button
+                type="submit"
+                style={{
+                  borderRadius: 10,
+                  background: "#4F46E5",
+                  padding: "10px 24px",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                {isSubmitting ? "Processing\u2026" : "Inject Credential"}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* QUARANTINE approval */}
+        {eventData?.type === "QUARANTINE" && (
+          <div>
+            <div
+              style={{
+                borderRadius: 10,
+                border: "1px solid rgba(245,158,11,0.15)",
+                background: "rgba(245,158,11,0.04)",
+                padding: 16,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 8,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 10,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.1em",
+                    color: "rgba(255,255,255,0.4)",
+                  }}
+                >
+                  Quorum Status
+                </span>
+                <span style={{ fontSize: 11, fontFamily: "monospace", color: "#F59E0B" }}>
+                  0 / {(eventData?.metadata?.required_count as number) || 2} Approvals
+                </span>
+              </div>
+              <div
+                style={{
+                  width: "100%",
+                  background: "rgba(0,0,0,0.5)",
+                  height: 6,
+                  borderRadius: 999,
+                  overflow: "hidden",
+                }}
+              >
+                <div style={{ background: "#F59E0B", height: "100%", width: "0%" }} />
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 16 }}>
+              <button
+                type="button"
+                onClick={handleAction}
+                style={{
+                  borderRadius: 10,
+                  background: "#D97706",
+                  padding: "10px 24px",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <CheckCircle2 size={16} /> Provide Signature
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* PAYMENT_REQUIRED stake injection */}
+        {eventData?.type === "PAYMENT_REQUIRED" && (
+          <div>
+            <div
+              style={{
+                borderRadius: 10,
+                border: "1px solid rgba(16,185,129,0.15)",
+                background: "rgba(16,185,129,0.04)",
+                padding: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
               <div>
-                <label className="mb-1.5 flex items-center gap-2 text-sm font-medium text-white/90">
-                  <KeyRound size={16} className="text-indigo-400" />
-                  Provider API Key
-                </label>
-                <div className="relative">
-                  <input
-                    type="password"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-white focus:border-indigo-500 focus:outline-none"
-                    autoFocus
-                  />
+                <div
+                  style={{
+                    fontSize: 10,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.1em",
+                    color: "rgba(255,255,255,0.4)",
+                    marginBottom: 4,
+                  }}
+                >
+                  Required Stake
                 </div>
+                <div style={{ fontSize: 18, fontFamily: "monospace", color: "#10B981" }}>15.00 VNP</div>
               </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button type="submit" className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-indigo-500">
-                  {isSubmitting ? "Processing..." : "Inject Credential"}
-                </button>
-              </div>
-            </form>
-          )}
-
-          {eventData?.type === "QUARANTINE" && (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs text-white/50 uppercase tracking-wider">Quorum Status</span>
-                  <span className="text-xs font-mono text-amber-400">0 / {eventData?.metadata?.required_count || 2} Approvals</span>
+              <div style={{ textAlign: "right" }}>
+                <div
+                  style={{
+                    fontSize: 10,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.1em",
+                    color: "rgba(255,255,255,0.4)",
+                    marginBottom: 4,
+                  }}
+                >
+                  Available
                 </div>
-                <div className="w-full bg-black/50 h-2 rounded-full overflow-hidden">
-                  <div className="bg-amber-500 h-full w-[0%]"></div>
+                <div style={{ fontSize: 18, fontFamily: "monospace", color: "rgba(255,255,255,0.6)" }}>
+                  45.00 VNP
                 </div>
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={handleAction} className="rounded-xl bg-amber-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-amber-500 flex items-center gap-2">
-                  <CheckCircle2 size={16} /> Provide Signature
-                </button>
               </div>
             </div>
-          )}
-
-          {eventData?.type === "PAYMENT_REQUIRED" && (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Required Stake</div>
-                  <div className="text-lg font-mono text-emerald-400">15.00 VNP</div>
-                </div>
-                <div>
-                  <div className="text-xs text-white/50 uppercase tracking-wider mb-1 text-right">Available</div>
-                  <div className="text-lg font-mono text-white/70 text-right">45.00 VNP</div>
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={handleAction} className="rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-emerald-500 flex items-center gap-2">
-                  <Zap size={16} /> Inject Stake
-                </button>
-              </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 16 }}>
+              <button
+                type="button"
+                onClick={handleAction}
+                style={{
+                  borderRadius: 10,
+                  background: "#059669",
+                  padding: "10px 24px",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <Zap size={16} /> Inject Stake
+              </button>
             </div>
-          )}
-
-        </motion.div>
+          </div>
+        )}
       </div>
-    </AnimatePresence>
+    </div>
   );
 }
