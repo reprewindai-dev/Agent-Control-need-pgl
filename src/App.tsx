@@ -12,6 +12,7 @@ import RunSpine from './components/RunSpine';
 import CouncilMatrix from './components/CouncilMatrix';
 import DataGrid from './components/DataGrid';
 import LiveTelemetry from './components/LiveTelemetry';
+import AmbientIntervention from './components/AmbientIntervention';
 import { Shield, Radio, Flame, Cpu, Gauge, AlertOctagon } from 'lucide-react';
 
 export default function App() {
@@ -105,6 +106,7 @@ export default function App() {
 
   return (
     <div className="w-screen h-screen bg-[#030303] text-white/90 overflow-hidden flex flex-col font-sans border-4 border-[#0A0A0C] relative">
+      <AmbientIntervention />
       
       {/* 1. Futuristic Scanline CRT overlay for cinematic feel */}
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-electric-cyan/2 w-full animate-scanline pointer-events-none z-50" />
