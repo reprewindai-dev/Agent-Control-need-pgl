@@ -1,0 +1,74 @@
+name: Terminal CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: terminal-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+  deploy:
+    name: Deploy to terminal.veklom.com
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    timeout-minutes: 15
+
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/veklom-deploy
+          chmod 600 ~/.ssh/veklom-deploy
+          ssh-keyscan -H 5.78.135.11 >> ~/.ssh/known_hosts
+
+      - name: Pull, Build, and Deploy on Server
+        run: |
+          ssh -i ~/.ssh/veklom-deploy root@5.78.135.11 "
+            set -e
+            APP=/data/terminal-veklom
+            cd \$APP
+            git pull origin main
+            docker build -t terminal-local:latest .
+            docker stop terminal-veklom || true
+            docker rm terminal-veklom || true
+            docker run -d \
+              --name terminal-veklom \
+              --network coolify \
+              --restart unless-stopped \
+              terminal-local:latest
+            echo 'Terminal deployment complete: ${{ github.sha }}'
+          "
+
+      - name: Verify Production Health
+        run: |
+          sleep 5
+          HTTP=$(curl -sk https://terminal.veklom.com -o /dev/null -w '%{http_code}')
+          if [ "$HTTP" != "200" ]; then
+            echo "HEALTH CHECK FAILED: terminal.veklom.com returned $HTTP"
+            exit 1
+          fi
+          echo "terminal.veklom.com healthy — deployment successful"
