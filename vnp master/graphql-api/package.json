@@ -1,0 +1,14 @@
+{
+  "name": "vnp-graphql-api",
+  "version": "0.1.5",
+  "description": "GraphQL API service for VNP using Apollo Server and ClickHouse",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@apollo/server": "^4.9.5",
+    "@clickhouse/client": "^0.2.1",
+    "graphql": "^16.8.1"
+  }
+}

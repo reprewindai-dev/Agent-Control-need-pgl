@@ -1,0 +1,280 @@
+version: '3.9'
+
+services:
+  # ============================================================================
+  # MEASUREMENT NODES (5 REGIONS, 3 NODES PER REGION = 15 TOTAL)
+  # ============================================================================
+  
+  measurement-node-us-east-1:
+    build:
+      context: ./measurement-agent
+      dockerfile: Dockerfile
+    environment:
+      REGION: "us-east"
+      NODE_ID: "vnp-us-east-1"
+      KAFKA_BROKERS: "kafka:9092"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      API_TARGETS: "stripe-payments,openai-api,anthropic-api,cloudflare-ai,google-inference"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - vnp-network
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  measurement-node-us-west-1:
+    build:
+      context: ./measurement-agent
+      dockerfile: Dockerfile
+    environment:
+      REGION: "us-west"
+      NODE_ID: "vnp-us-west-1"
+      KAFKA_BROKERS: "kafka:9092"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      API_TARGETS: "stripe-payments,openai-api,anthropic-api,cloudflare-ai,google-inference"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - vnp-network
+    restart: unless-stopped
+
+  measurement-node-eu-west-1:
+    build:
+      context: ./measurement-agent
+      dockerfile: Dockerfile
+    environment:
+      REGION: "eu-west"
+      NODE_ID: "vnp-eu-west-1"
+      KAFKA_BROKERS: "kafka:9092"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      API_TARGETS: "stripe-payments,openai-api,anthropic-api,cloudflare-ai,google-inference"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - vnp-network
+    restart: unless-stopped
+
+  measurement-node-ap-southeast-1:
+    build:
+      context: ./measurement-agent
+      dockerfile: Dockerfile
+    environment:
+      REGION: "ap-southeast"
+      NODE_ID: "vnp-ap-southeast-1"
+      KAFKA_BROKERS: "kafka:9092"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      API_TARGETS: "stripe-payments,openai-api,anthropic-api,cloudflare-ai,google-inference"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - vnp-network
+    restart: unless-stopped
+
+  measurement-node-ap-northeast-1:
+    build:
+      context: ./measurement-agent
+      dockerfile: Dockerfile
+    environment:
+      REGION: "ap-northeast"
+      NODE_ID: "vnp-ap-northeast-1"
+      KAFKA_BROKERS: "kafka:9092"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      API_TARGETS: "stripe-payments,openai-api,anthropic-api,cloudflare-ai,google-inference"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - vnp-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # DATA PIPELINE
+  # ============================================================================
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    depends_on:
+      - zookeeper
+    networks:
+      - vnp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - vnp-network
+    restart: unless-stopped
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    environment:
+      CLICKHOUSE_DB: vnp
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - clickhouse-data:/var/lib/clickhouse
+    networks:
+      - vnp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"
+      - "13133:13133"
+    depends_on:
+      - clickhouse
+    networks:
+      - vnp-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # SCORING ENGINE
+  # ============================================================================
+
+  scoring-engine:
+    build:
+      context: ./scoring-engine
+      dockerfile: Dockerfile
+    environment:
+      KAFKA_BROKERS: "kafka:9092"
+      CLICKHOUSE_HOST: "clickhouse"
+      CLICKHOUSE_PORT: "9000"
+      CLICKHOUSE_DB: "vnp"
+      BASE_RPC_URL: "https://mainnet.base.org"
+      VNP_ISSUER_KEY: ${VNP_ISSUER_PRIVATE_KEY:-}
+      METHODOLOGY_VERSION: "0.1.0"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    networks:
+      - vnp-network
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  # ============================================================================
+  # PUBLIC API (GRAPHQL + REST)
+  # ============================================================================
+
+  public-api:
+    build:
+      context: ./public-api
+      dockerfile: Dockerfile
+    environment:
+      CLICKHOUSE_HOST: "clickhouse"
+      CLICKHOUSE_PORT: "9000"
+      CLICKHOUSE_DB: "vnp"
+      PORT: "4000"
+      GRAPHQL_ENDPOINT: "/graphql"
+      REST_ENDPOINT: "/v1"
+      RATE_LIMIT_REQUESTS: "1000"
+      RATE_LIMIT_WINDOW_MINUTES: "60"
+    ports:
+      - "4000:4000"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    networks:
+      - vnp-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # FRONTEND DASHBOARD
+  # ============================================================================
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:4000"
+      NEXT_PUBLIC_GRAPHQL_URL: "http://localhost:4000/graphql"
+      NEXT_PUBLIC_CHAIN: "base"
+      NEXT_PUBLIC_BASE_RPC: "https://mainnet.base.org"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - public-api
+    networks:
+      - vnp-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # MONITORING (PROMETHEUS + GRAFANA)
+  # ============================================================================
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    networks:
+      - vnp-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - vnp-network
+    restart: unless-stopped
+
+networks:
+  vnp-network:
+    driver: bridge
+
+volumes:
+  clickhouse-data:
+  prometheus-data:
+  grafana-data:
