@@ -1,3 +1,5 @@
+> Historical generated implementation package. It is not evidence of deployed production capability.
+
 # VNP v0.1 → v1.0 BLUEPRINT LOCK
 ## PHASE 1: FEATURE AUDIT & ARCHITECTURE FINALIZATION
 

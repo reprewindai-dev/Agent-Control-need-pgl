@@ -1,3 +1,5 @@
+> Historical deployment research — superseded by Hetzner/Coolify topology.
+
 # VNP v0.1 DEPLOYMENT GUIDE
 ## PHASE 3: LINUX FOUNDATION LAUNCH
 

@@ -1,3 +1,5 @@
+> Historical generated implementation package. It is not evidence of deployed production capability.
+
 # VNP v0.1 COMPLETE AGENT-EXECUTABLE BLUEPRINT
 ## Building the Undeniable, Credible API Benchmark Standard
 

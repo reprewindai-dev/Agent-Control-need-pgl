@@ -1,3 +1,5 @@
+> Historical generated implementation package. It is not evidence of deployed production capability.
+
 # VNP v0.1 PRODUCTION DEPLOYMENT
 ## Quick Start Guide (One Command to Live)
 
